@@ -16,9 +16,11 @@ export function Footer() {
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center">
-              <span className="font-heading font-bold text-xl">
-                Wonder Tours and Services
-              </span>
+              <img
+                src="/Logo_wonder_origine.png"
+                alt="Wonder Tours and Services"
+                className="h-20 w-auto"
+              />
             </div>
             <p className="text-text-secondary text-sm leading-relaxed">
               {isFr ? SITE_CONFIG.description : SITE_CONFIG.descriptionEn}

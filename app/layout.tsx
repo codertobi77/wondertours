@@ -18,7 +18,12 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = generateMetadata({});
+export const metadata: Metadata = generateMetadata({
+  icons: {
+    icon: "/croquis.png",
+    apple: "/croquis.png",
+  },
+})
 
 // Données structurées Schema.org pour l'organisation
 const jsonLd = {
@@ -54,6 +59,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <link rel="icon" type="image/png" href="/croquis.png"></link>
       </head>
       <body className="min-h-full flex flex-col">
         <ReservationsProvider>

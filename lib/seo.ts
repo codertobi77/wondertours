@@ -6,11 +6,16 @@ export function generateMetadata({
   description,
   path = "",
   image,
+  icons,
 }: {
   title?: string;
   description?: string;
   path?: string;
   image?: string;
+  icons?: {
+    icon?: string;
+    apple?: string;
+  };
 }): Metadata {
   const url = `${SITE_CONFIG.url}${path}`;
   const ogImage = image || SITE_CONFIG.ogImage;
@@ -26,6 +31,10 @@ export function generateMetadata({
       "Excursions Ouidah",
       "Tourisme culturel Afrique",
     ],
+    icons: icons || {
+      icon: "/icon.png",
+      apple: "/icon.png",
+    },
     openGraph: {
       type: "website",
       locale: "fr_FR",

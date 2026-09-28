@@ -63,12 +63,11 @@ export function Header() {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <span className={cn(
-              "font-heading font-bold text-xl",
-              isScrolled ? "text-white" : "text-white"
-            )}>
-              Wonder Tours and Services
-            </span>
+            <img
+              src="/Logo_wonder_blanc.png"
+              alt="Wonder Tours and Services"
+              className="h-15 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
