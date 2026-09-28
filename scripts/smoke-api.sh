@@ -115,6 +115,17 @@ check "POST /api/auth/login mauvais mot de passe" 401 "$(curl -s -o /dev/null -w
 LOGIN_JSON=$(curl -s -c "$ADMIN_JAR" -X POST "$BASE_URL/api/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}")
 check_json "POST /api/auth/login (admin)" "admin" "$LOGIN_JSON" "d['user']['role']"
 
+# Mot de passe oublié : réponse 200 générique (anti-énumération),
+# token invalide refusé, pages publiques accessibles sans session.
+FORGOT_JSON=$(curl -s -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d '{"email":"inconnu-smoke@wondertours.bj"}')
+check "POST /api/auth/forgot-password (email inconnu) → 200 générique" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d '{"email":"inconnu-smoke@wondertours.bj"}')"
+check_json "  message anti-énumération" "Si un compte actif existe avec cet email, un lien de réinitialisation vient d'être envoyé." "$FORGOT_JSON" "d['message']"
+check "POST /api/auth/forgot-password (admin, email réel) → 200" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\"}")"
+check "POST /api/auth/reset-password token invalide → 400" 400 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/reset-password" -H "Content-Type: application/json" -d '{"token":"0000000000000000000000000000000000000000000000000000000000000000","password":"motdepasse123"}')"
+check "POST /api/auth/reset-password mot de passe trop court → 400" 400 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/reset-password" -H "Content-Type: application/json" -d '{"token":"0000000000000000000000000000000000000000000000000000000000000000","password":"court"}')"
+check "GET /dashboard/forgot-password sans session" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard/forgot-password")"
+check "GET /dashboard/reset-password sans session" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard/reset-password?token=abc")"
+
 # ───────────────────── Endpoints dashboard (session admin) ─────────────────────
 
 for path in circuits destinations categories testimonials services blog blog-categories bookings contact-requests settings stats media users; do

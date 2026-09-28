@@ -48,6 +48,23 @@ La clé est relue à chaque upload, pas au chargement du module.
 
 Clé du service de traduction DeepL (`lib/services/deepl.ts`). Elle active la route `POST /api/dashboard/translate` (admin + éditeur), utilisée par le bouton « Traduire en anglais (DeepL) » des formulaires du dashboard (circuit, article blog, témoignage) pour pré-remplir les champs `*En` depuis les champs français. Sans la clé, la route répond `503` ; l'interface publique continue d'utiliser les traductions statiques de `lib/translations.ts`.
 
+### `RESEND_API_KEY` — optionnel en local, recommandé en production
+
+Clé du service d'envoi d'emails Resend (https://resend.com — client `lib/services/mailer.ts`, templates `lib/services/mail-templates.ts`). Elle active tous les envois du site :
+
+- **contact** (`POST /api/contact`) : accusé de réception au visiteur + notification interne (destinataires `MAIL_TEAM_EMAIL`, défaut `contact@wondertours.bj`) ;
+- **réservations** (`POST /api/bookings`) : confirmation client (référence `WT-XXXXXX`) + notification interne ; changement de statut (`PATCH /api/dashboard/bookings/[id]/status`) : notification client ;
+- **mot de passe oublié** (`POST /api/auth/forgot-password` puis `/reset-password`) : lien de réinitialisation (token à usage unique, 1 h) + email de confirmation ;
+- **création de compte** (`POST /api/dashboard/users`) : email de bienvenue (jamais le mot de passe en clair).
+
+Sans la clé, chaque envoi est ignoré avec un log `[mail] RESEND_API_KEY absente — email non envoyé` : aucune requête HTTP n'échoue (dégradation gracieuse, même principe que imgBB/DeepL).
+
+Variables compagnes :
+
+- `MAIL_FROM` — expéditeur ; défaut `Wonder Tours <onboarding@resend.dev>` (domaine de test Resend : ne délivre que vers l'email du compte). En production, utiliser un domaine vérifié, ex. `MAIL_FROM="Wonder Tours <contact@wondertours.bj>"` ;
+- `MAIL_TEAM_EMAIL` — destinataire(s) des notifications internes, séparés par des virgules ; défaut `SITE_CONFIG.contact.email` ;
+- `APP_URL` — base des liens insérés dans les emails (reset, dashboard) ; défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertours.bj` ; en local : `http://localhost:3000`.
+
 ## Production (Vercel)
 
 Ajouter au minimum : `DATABASE_URL`, `AUTH_SECRET`, et au premier déploiement `ADMIN_EMAIL` / `ADMIN_PASSWORD` + `EDITOR_EMAIL` / `EDITOR_PASSWORD` si le seed doit créer les comptes initiaux :
@@ -61,4 +78,7 @@ Recommandées en production :
 ```bash
 bunx vercel env add IMGBB_API_KEY production   # uploads média persistants (sinon fallback local non persistant)
 bunx vercel env add DEEPL_API_KEY production   # optionnel : bouton « Traduire en anglais » du dashboard
+bunx vercel env add RESEND_API_KEY production  # emails transactionnels (contact, réservations, reset, bienvenue)
+# puis, avec un domaine vérifié dans Resend :
+bunx vercel env add MAIL_FROM production        # ex. "Wonder Tours <contact@wondertours.bj>"
 ```

@@ -13,6 +13,7 @@ import {
   type ContactRequest,
   type Setting,
   type MediaFile,
+  type PasswordResetToken,
 } from "@/lib/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -69,4 +70,5 @@ export type {
   ContactRequest,
   Setting,
   MediaFile,
+  PasswordResetToken,
 };

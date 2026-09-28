@@ -17,8 +17,14 @@ export function DashboardLayoutClient({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
-  // La page de connexion s'affiche sans chrome (sidebar/header).
-  if (pathname === "/dashboard/login") {
+  // Les pages d'authentification (connexion, mot de passe oublié,
+  // réinitialisation) s'affichent sans chrome (sidebar/header).
+  const AUTH_PAGES = [
+    "/dashboard/login",
+    "/dashboard/forgot-password",
+    "/dashboard/reset-password",
+  ];
+  if (AUTH_PAGES.includes(pathname)) {
     return <>{children}</>;
   }
 

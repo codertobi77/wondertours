@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { created, parseBody, handleRoute } from "@/lib/api/utils";
 import { createContactRequest } from "@/lib/services/contact-requests";
+import { getTeamEmails, sendEmailSafe } from "@/lib/services/mailer";
+import {
+  contactConfirmationEmail,
+  contactNotificationEmail,
+} from "@/lib/services/mail-templates";
 
 /**
  * Le formulaire public envoie sejour/autre (front) ; l'enum base
@@ -48,6 +53,32 @@ export async function POST(request: Request) {
       travelers: body.travelers ?? null,
       message: body.message,
     });
+
+    // Emails best effort (sendEmailSafe) : accusé de réception au visiteur +
+    // notification interne — jamais bloquants pour la requête.
+    await Promise.all([
+      sendEmailSafe({
+        to: contactRequest.email,
+        ...contactConfirmationEmail({
+          name: contactRequest.name,
+          requestType: contactRequest.requestType,
+        }),
+      }),
+      sendEmailSafe({
+        to: getTeamEmails(),
+        replyTo: contactRequest.email,
+        ...contactNotificationEmail({
+          name: contactRequest.name,
+          email: contactRequest.email,
+          phone: contactRequest.phone,
+          subject: contactRequest.subject,
+          requestType: contactRequest.requestType,
+          travelDate: contactRequest.travelDate,
+          travelers: contactRequest.travelers,
+          message: contactRequest.message ?? "",
+        }),
+      }),
+    ]);
 
     return created({
       message: "Demande envoyée avec succès",

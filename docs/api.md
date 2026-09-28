@@ -125,6 +125,21 @@ Sessions JWT stockées dans le cookie httpOnly `wt_session` (7 jours, signées a
 #### `POST /api/auth/logout`
 Supprime le cookie de session. Réponse `200` : `{ "success": true }`.
 
+#### `POST /api/auth/forgot-password`
+```json
+{ "email": "admin@wondertours.bj" }
+```
+* Réponse `200` **identique que l'email existe ou non** (anti-énumération) : `{ "message": "Si un compte actif existe avec cet email, un lien de réinitialisation vient d'être envoyé." }`.
+* Si un compte actif existe : un token à usage unique (validité 1 h, seul son hash SHA-256 est stocké en base) est créé et un email contenant le lien `/dashboard/reset-password?token=…` est envoyé via Resend (silencieusement ignoré si `RESEND_API_KEY` est absente).
+* Une nouvelle demande invalide les liens précédents non consommés de l'utilisateur.
+
+#### `POST /api/auth/reset-password`
+```json
+{ "token": "64 caractères hexadécimaux", "password": "8 caractères min" }
+```
+* Réponse `200` : `{ "message": "Mot de passe modifié avec succès" }` — mot de passe re-hashé (bcrypt) et email de confirmation envoyé au compte.
+* Token inconnu, expiré ou déjà utilisé → `400` `{ "error": "Lien invalide ou expiré…" }` ; la consommation est atomique (`used_at`), le token ne peut servir qu'une fois.
+
 ## API dashboard (`/api/dashboard/*`)
 
 > 🔒 **Authentification requise** — sans session → `401`, rôle insuffisant → `403` :

@@ -57,6 +57,16 @@ export async function getBookingById(id: string): Promise<Booking | null> {
   return prisma.booking.findUnique({ where: { id } });
 }
 
+/** Réservation avec le circuit associé (titre/slug) — emails de statut. */
+export async function getBookingWithCircuitById(
+  id: string
+): Promise<BookingWithCircuit | null> {
+  return prisma.booking.findUnique({
+    where: { id },
+    include: { circuit: { select: { id: true, title: true, slug: true } } },
+  });
+}
+
 /** Génère une référence unique lisible : WT-XXXXXX (base 36, 6 caractères). */
 async function generateBookingReference(): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {

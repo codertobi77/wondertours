@@ -2,6 +2,8 @@ import { z } from "zod";
 import { ok, created, parseBody, parseQuery, handleProtectedRoute } from "@/lib/api/utils";
 import { listQuerySchema, boolQuery } from "@/lib/api/schemas";
 import { listUsers, createUser } from "@/lib/services/users";
+import { getAppUrl, sendEmailSafe } from "@/lib/services/mailer";
+import { userWelcomeEmail } from "@/lib/services/mail-templates";
 
 const listSchema = listQuerySchema.extend({
   role: z.enum(["admin", "editor", "viewer"]).optional(),
@@ -39,6 +41,22 @@ export async function POST(request: Request) {
     if (errorResponse) return errorResponse;
 
     const user = await createUser(body);
+
+    // Email de bienvenue best effort (sendEmailSafe) — sans mot de passe
+    // en clair : l'utilisateur le reçoit de l'admin ou passe par « mot de
+    // passe oublié » pour en définir un nouveau.
+    const appUrl = getAppUrl();
+    await sendEmailSafe({
+      to: user.email,
+      ...userWelcomeEmail({
+        name: user.firstName,
+        email: user.email,
+        role: user.role,
+        dashboardUrl: `${appUrl}/dashboard`,
+        forgotPasswordUrl: `${appUrl}/dashboard/forgot-password`,
+      }),
+    });
+
     return created(user);
   }, { roles: ["admin"] });
 }

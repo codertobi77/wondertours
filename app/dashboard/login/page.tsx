@@ -123,6 +123,15 @@ export default function LoginPage() {
             )}
           </form>
 
+          <p className="mt-4 text-center text-sm">
+            <Link
+              href="/dashboard/forgot-password"
+              className="text-primary hover:underline"
+            >
+              Mot de passe oublié ?
+            </Link>
+          </p>
+
           <div className="mt-6 text-center pt-6 border-t border-gray-200">
             <Link
               href="/"

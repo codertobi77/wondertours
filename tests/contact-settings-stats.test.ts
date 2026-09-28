@@ -12,6 +12,8 @@ import {
   upsertSettings,
 } from "@/lib/services/settings";
 import { getDashboardStats } from "@/lib/services/stats";
+import { createCircuit, deleteCircuit } from "@/lib/services/circuits";
+import { prisma } from "@/lib/db";
 import { uniquePrefix } from "./helpers";
 
 describe("demandes de contact", () => {
@@ -60,13 +62,50 @@ describe("settings", () => {
 
 describe("stats", () => {
   test("agrégats dashboard cohérents", async () => {
-    const stats = await getDashboardStats();
-    expect(stats.circuits.total).toBeGreaterThanOrEqual(6);
-    expect(stats.circuits.active).toBeGreaterThanOrEqual(6);
-    expect(stats.circuits.featured).toBeLessThanOrEqual(stats.circuits.active);
-    expect(stats.destinations.total).toBeGreaterThanOrEqual(6);
-    expect(stats.bookings.revenueThisMonth).toBeGreaterThanOrEqual(0);
-    expect(typeof stats.testimonials.averageRating).not.toBe("undefined");
-    expect(Array.isArray(stats)).toBe(false);
+    // Fixtures propres au test : le seed statique ayant été vidé (le contenu
+    // vit dans la base de production), le test ne doit pas dépendre du
+    // contenu préexistant de la base — il doit passer sur une base fraîche
+    // (CI) comme sur la base de production.
+    const prefix = uniquePrefix("stat");
+    const destination = await prisma.destination.create({
+      data: { name: prefix, slug: uniquePrefix("stat-dest"), country: "Bénin" },
+    });
+    const circuitVedette = await createCircuit({
+      title: `${prefix} vedette`,
+      slug: uniquePrefix("stat-circuit-vedette"),
+      price: 25000,
+      durationDays: 2,
+      currency: "XOF",
+      isActive: true,
+      isFeatured: true,
+      highlights: ["Étape 1"],
+      itinerary: [{ day: 1, title: "Arrivée" }],
+    });
+    const circuitInactif = await createCircuit({
+      title: `${prefix} inactif`,
+      slug: uniquePrefix("stat-circuit-inactif"),
+      price: 15000,
+      durationDays: 1,
+      currency: "XOF",
+      isActive: false,
+      highlights: ["Étape 1"],
+      itinerary: [{ day: 1, title: "Arrivée" }],
+    });
+
+    try {
+      const stats = await getDashboardStats();
+      // Bornes minimales garanties par les fixtures ci-dessus.
+      expect(stats.circuits.total).toBeGreaterThanOrEqual(2);
+      expect(stats.circuits.active).toBeGreaterThanOrEqual(1);
+      expect(stats.circuits.featured).toBeLessThanOrEqual(stats.circuits.active);
+      expect(stats.destinations.total).toBeGreaterThanOrEqual(1);
+      expect(stats.bookings.revenueThisMonth).toBeGreaterThanOrEqual(0);
+      expect(typeof stats.testimonials.averageRating).not.toBe("undefined");
+      expect(Array.isArray(stats)).toBe(false);
+    } finally {
+      await deleteCircuit(circuitVedette.id);
+      await deleteCircuit(circuitInactif.id);
+      await prisma.destination.delete({ where: { id: destination.id } });
+    }
   });
 });

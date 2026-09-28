@@ -20,6 +20,9 @@
 # production
 /build
 
+# LWS packaging output
+dist-lws/
+
 # misc
 .DS_Store
 *.pem

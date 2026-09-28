@@ -70,7 +70,28 @@ model User {
   blogPosts  BlogPost[]
   mediaFiles MediaFile[]
 
+  passwordResetTokens PasswordResetToken[]
+
   @@map("users")
+}
+
+// ─────────────────────────────── Réinitialisation de mot de passe ───────────────────────────────
+
+// Token de réinitialisation « mot de passe oublié » : seul le hash SHA-256
+// du token est stocké (jamais le token brut), à usage unique et expirant.
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 // ─────────────────────────────── Contenu ───────────────────────────────
@@ -135,9 +156,13 @@ model Circuit {
   imageUrl        String?     @map("image_url") @db.VarChar(500)
   gallery         Json?
   highlights      Json?
+  highlightsEn    Json?       @map("highlights_en")
   itinerary       Json?
+  itineraryEn     Json?       @map("itinerary_en")
   included        Json?
+  includedEn      Json?       @map("included_en")
   excluded        Json?
+  excludedEn      Json?       @map("excluded_en")
   difficulty      Difficulty?
   minParticipants Int?        @map("min_participants")
   maxParticipants Int?        @map("max_participants")

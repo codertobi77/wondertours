@@ -23,9 +23,17 @@ export async function proxy(request: NextRequest) {
   const session = token ? toSession(await verifySessionToken(token)) : null;
   const hasSession = session !== null;
 
+  // Pages d'authentification accessibles sans session : connexion, mot de
+  // passe oublié et réinitialisation (le token du lien fait foi pour le reset).
+  const PUBLIC_AUTH_PAGES = [
+    "/dashboard/login",
+    "/dashboard/forgot-password",
+    "/dashboard/reset-password",
+  ];
+  const isPublicAuthPage = PUBLIC_AUTH_PAGES.includes(pathname);
   const isLoginPage = pathname === "/dashboard/login";
 
-  if (!hasSession && !isLoginPage) {
+  if (!hasSession && !isPublicAuthPage) {
     return NextResponse.redirect(new URL("/dashboard/login", request.url));
   }
 

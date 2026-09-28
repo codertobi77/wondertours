@@ -1,0 +1,73 @@
+# CI Wonder Tours — lint, types, tests (PostgreSQL éphémère) et build.
+# Aucun secret requis : la base est un conteneur de service frais et les tests
+# créent leurs propres données (préfixes uniques, nettoyage inclus) ; les
+# intégrations externes (imgBB, DeepL) sont mockées ou testent les gardes.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wondertours
+          POSTGRES_PASSWORD: wondertours
+          POSTGRES_DB: wondertours_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wondertours -d wondertours_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://wondertours:wondertours@localhost:5432/wondertours_test
+      AUTH_SECRET: secret-ci-wondertours-jamais-en-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Installer les dépendances
+        run: bun install --frozen-lockfile
+
+      - name: Générer le client Prisma
+        run: bun run db:generate
+
+      - name: Appliquer les migrations
+        run: bun run db:deploy
+
+      - name: Seed (idempotent — sans les comptes, absents de l'env CI)
+        run: bun run db:seed
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        # Les types globaux de routes (PageProps, RouteContext…) sont générés
+        # par Next (next dev/build/typegen) — absents d'un checkout frais.
+        # Cf. docs Next : « next typegen && tsc --noEmit » en CI.
+        run: |
+          bunx next typegen
+          bunx tsc --noEmit
+
+      - name: Tests
+        run: bun test
+
+      - name: "Build Next.js (output: standalone)"
+        run: bun run build
+
+      - name: Vérifier le bundle standalone
+        run: test -f .next/standalone/server.js
