@@ -7,7 +7,7 @@ Procédure complète pour déployer l'application Next.js 16 + Prisma 7 sur **Ve
 - `bun` ≥ 1.x installé localement
 - CLI Vercel authentifiée : `bunx vercel login` (ou import GitHub, cf. § Vercel)
 - Un compte Aiven (console : https://console.aiven.io)
-- Le dépôt GitHub `romain-djegbenagnon/wondertours_web_site` à jour sur `master`
+- Le dépôt GitHub `codertobi77/wondertours` à jour sur `master`
 
 ## 1. Base de données — Aiven PostgreSQL
 
@@ -74,7 +74,7 @@ Notes :
 
 ### 2.2 Option B : import GitHub (sans CLI)
 
-1. https://vercel.com/new → importer `romain-djegbenagnon/wondertours_web_site`
+1. https://vercel.com/new → importer `codertobi77/wondertours`
 2. Framework preset : **Next.js** (détecté automatiquement, bun détecté)
 3. Environment Variables → ajouter `DATABASE_URL` = URI Aiven (Production)
 4. **Deploy**. Les push suivants sur `master` redéploient automatiquement.

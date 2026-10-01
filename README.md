@@ -2,10 +2,10 @@
 
 > Site web officiel de l'agence de voyage **Wonder Tours and Services** (Ouidah, Bénin) : vitrine bilingue français / anglais, tableau de bord d'administration et API REST — construits avec Next.js 16.
 
-[![CI](https://github.com/romain-djegbenagnon/wondertours_web_site/actions/workflows/ci.yml/badge.svg)](https://github.com/romain-djegbenagnon/wondertours_web_site/actions/workflows/ci.yml)
+[![CI](https://github.com/codertobi77/wondertours/actions/workflows/ci.yml/badge.svg)](https://github.com/codertobi77/wondertours/actions/workflows/ci.yml)
 
 - **Production** : https://wondertourswebsite.vercel.app
-- **Dépôt** : https://github.com/romain-djegbenagnon/wondertours_web_site (branche `master`)
+- **Dépôt** : https://github.com/codertobi77/wondertours (branche `master`)
 - **Documentation** : [`docs/api.md`](docs/api.md) (API), [`env-setup.md`](docs/env-setup.md) (variables d'environnement), [`deployment.md`](docs/deployment.md) (Vercel), [`deployment-lws.md`](docs/deployment-lws.md) (LWS/cPanel)
 
 ## Présentation
@@ -244,8 +244,8 @@ Toute contribution est bienvenue : correction de bug, nouvelle fonctionnalité, 
 ### Mise en place
 
 ```bash
-git clone https://github.com/romain-djegbenagnon/wondertours_web_site.git
-cd wondertours_web_site
+git clone https://github.com/codertobi77/wondertours.git
+cd wondertours
 bun install                # installe + génère le client Prisma (postinstall)
 
 # Créez .env à partir du modèle de la section « Variables d'environnement »
