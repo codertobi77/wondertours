@@ -8,6 +8,8 @@ on:
   push:
     branches: [master]
   pull_request:
+  workflow_dispatch: # déclenchement manuel (onglet Actions) — utile si les
+                      # workflows sont activés après des pushes (forks)
 
 concurrency:
   group: ci-${{ github.ref }}
