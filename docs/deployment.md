@@ -91,7 +91,7 @@ Notes :
   (`POST /api/dashboard/translate`, bouton « Traduire en anglais ») :
   `echo "<clé-deepl>" | bunx vercel env add DEEPL_API_KEY production`
 - `NEXT_PUBLIC_SITE_URL` — optionnel, métadonnées ; à défaut
-  `SITE_CONFIG.url` (`https://wondertours.bj`) est utilisée.
+  `SITE_CONFIG.url` (`https://wondertoursandservices.com`) est utilisée.
 
 ## 3. Vérification post-déploiement
 

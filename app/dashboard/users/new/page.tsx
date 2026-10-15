@@ -119,7 +119,7 @@ export default function NewUserPage() {
               <Input
                 label="Email *"
                 type="email"
-                placeholder="eric@wondertours.bj"
+                placeholder="eric@wondertoursandservices.com"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
               />

@@ -69,7 +69,7 @@ export default function LoginPage() {
                   type="email"
                   required
                   autoComplete="email"
-                  placeholder="admin@wondertours.bj"
+                  placeholder="admin@wondertoursandservices.com"
                   className="pl-10"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

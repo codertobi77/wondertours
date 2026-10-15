@@ -18,7 +18,7 @@ import { uniquePrefix } from "./helpers";
 
 describe("users", () => {
   test("CRUD : hash bcrypt, PublicUser sans passwordHash, vérification mot de passe", async () => {
-    const email = `${uniquePrefix("user")}@wondertours.bj`;
+    const email = `${uniquePrefix("user")}@wondertoursandservices.com`;
     const password = "motdepasse123";
 
     let user = await createUser({
@@ -57,7 +57,7 @@ describe("users", () => {
   });
 
   test("email dupliqué → erreur Prisma unique", async () => {
-    const email = `${uniquePrefix("dup")}@wondertours.bj`;
+    const email = `${uniquePrefix("dup")}@wondertoursandservices.com`;
     const u1 = await createUser({
       email,
       password: "motdepasse123",

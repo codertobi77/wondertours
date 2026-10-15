@@ -33,7 +33,7 @@ Ce deuxième compte permet de vérifier les accès par rôle : l'éditeur lit et
 
 ### `NEXT_PUBLIC_SITE_URL` — optionnel
 
-URL publique utilisée pour les métadonnées (`metadataBase`, canonicals). À défaut, `SITE_CONFIG.url` (`https://wondertours.bj`).
+URL publique utilisée pour les métadonnées (`metadataBase`, canonicals). À défaut, `SITE_CONFIG.url` (`https://wondertoursandservices.com`).
 
 ### `IMGBB_API_KEY` — optionnel en local, recommandé en production
 
@@ -52,7 +52,7 @@ Clé du service de traduction DeepL (`lib/services/deepl.ts`). Elle active la ro
 
 Clé du service d'envoi d'emails Resend (https://resend.com — client `lib/services/mailer.ts`, templates `lib/services/mail-templates.ts`). Elle active tous les envois du site :
 
-- **contact** (`POST /api/contact`) : accusé de réception au visiteur + notification interne (destinataires `MAIL_TEAM_EMAIL`, défaut `contact@wondertours.bj`) ;
+- **contact** (`POST /api/contact`) : accusé de réception au visiteur + notification interne (destinataires `MAIL_TEAM_EMAIL`, défaut `contact@wondertoursandservices.com`) ;
 - **réservations** (`POST /api/bookings`) : confirmation client (référence `WT-XXXXXX`) + notification interne ; changement de statut (`PATCH /api/dashboard/bookings/[id]/status`) : notification client ;
 - **mot de passe oublié** (`POST /api/auth/forgot-password` puis `/reset-password`) : lien de réinitialisation (token à usage unique, 1 h) + email de confirmation ;
 - **création de compte** (`POST /api/dashboard/users`) : email de bienvenue (jamais le mot de passe en clair).
@@ -61,9 +61,9 @@ Sans la clé, chaque envoi est ignoré avec un log `[mail] RESEND_API_KEY absent
 
 Variables compagnes :
 
-- `MAIL_FROM` — expéditeur ; défaut `Wonder Tours <onboarding@resend.dev>` (domaine de test Resend : ne délivre que vers l'email du compte). En production, utiliser un domaine vérifié, ex. `MAIL_FROM="Wonder Tours <contact@wondertours.bj>"` ;
+- `MAIL_FROM` — expéditeur ; défaut `Wonder Tours <onboarding@resend.dev>` (domaine de test Resend : ne délivre que vers l'email du compte). En production, utiliser un domaine vérifié, ex. `MAIL_FROM="Wonder Tours <contact@wondertoursandservices.com>"` ;
 - `MAIL_TEAM_EMAIL` — destinataire(s) des notifications internes, séparés par des virgules ; défaut `SITE_CONFIG.contact.email` ;
-- `APP_URL` — base des liens insérés dans les emails (reset, dashboard) ; défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertours.bj` ; en local : `http://localhost:3000`.
+- `APP_URL` — base des liens insérés dans les emails (reset, dashboard) ; défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertoursandservices.com` ; en local : `http://localhost:3000`.
 
 ## Production (Vercel)
 
@@ -80,5 +80,5 @@ bunx vercel env add IMGBB_API_KEY production   # uploads média persistants (sin
 bunx vercel env add DEEPL_API_KEY production   # optionnel : bouton « Traduire en anglais » du dashboard
 bunx vercel env add RESEND_API_KEY production  # emails transactionnels (contact, réservations, reset, bienvenue)
 # puis, avec un domaine vérifié dans Resend :
-bunx vercel env add MAIL_FROM production        # ex. "Wonder Tours <contact@wondertours.bj>"
+bunx vercel env add MAIL_FROM production        # ex. "Wonder Tours <contact@wondertoursandservices.com>"
 ```

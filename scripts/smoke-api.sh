@@ -117,8 +117,8 @@ check_json "POST /api/auth/login (admin)" "admin" "$LOGIN_JSON" "d['user']['role
 
 # Mot de passe oublié : réponse 200 générique (anti-énumération),
 # token invalide refusé, pages publiques accessibles sans session.
-FORGOT_JSON=$(curl -s -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d '{"email":"inconnu-smoke@wondertours.bj"}')
-check "POST /api/auth/forgot-password (email inconnu) → 200 générique" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d '{"email":"inconnu-smoke@wondertours.bj"}')"
+FORGOT_JSON=$(curl -s -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d '{"email":"inconnu-smoke@wondertoursandservices.com"}')
+check "POST /api/auth/forgot-password (email inconnu) → 200 générique" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d '{"email":"inconnu-smoke@wondertoursandservices.com"}')"
 check_json "  message anti-énumération" "Si un compte actif existe avec cet email, un lien de réinitialisation vient d'être envoyé." "$FORGOT_JSON" "d['message']"
 check "POST /api/auth/forgot-password (admin, email réel) → 200" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\"}")"
 check "POST /api/auth/reset-password token invalide → 400" 400 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/reset-password" -H "Content-Type: application/json" -d '{"token":"0000000000000000000000000000000000000000000000000000000000000000","password":"motdepasse123"}')"
@@ -153,7 +153,7 @@ else
 fi
 
 # L'admin crée un compte d'un autre rôle, le modifie puis le supprime.
-SMOKE_USER_EMAIL="smoke-$(date +%s)@wondertours.bj"
+SMOKE_USER_EMAIL="smoke-$(date +%s)@wondertoursandservices.com"
 USER_JSON=$(curl -s -b "$ADMIN_JAR" -X POST "$BASE_URL/api/dashboard/users" -H "Content-Type: application/json" \
   -d "{\"email\":\"$SMOKE_USER_EMAIL\",\"password\":\"motdepasse123\",\"firstName\":\"Smoke\",\"lastName\":\"Test\",\"role\":\"viewer\"}")
 check_json "POST /api/dashboard/users (admin crée un lecteur)" "viewer" "$USER_JSON" "d['role']"

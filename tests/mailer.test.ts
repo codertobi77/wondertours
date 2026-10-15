@@ -142,12 +142,12 @@ describe("mail-templates", () => {
   test("userWelcomeEmail : email, rôle, sans mot de passe en clair", () => {
     const email = userWelcomeEmail({
       name: "Awa",
-      email: "awa@wondertours.bj",
+      email: "awa@wondertoursandservices.com",
       role: "editor",
       dashboardUrl: "http://localhost:3000/dashboard",
       forgotPasswordUrl: "http://localhost:3000/dashboard/forgot-password",
     });
-    expect(email.html).toContain("awa@wondertours.bj");
+    expect(email.html).toContain("awa@wondertoursandservices.com");
     expect(email.html).toContain("Éditeur");
     expect(email.html).toContain("/dashboard/forgot-password");
     // Le template ne prend jamais de mot de passe en entrée (typage TS) —
@@ -180,13 +180,13 @@ describe("mailer (Resend)", () => {
 
   test("valeurs par défaut : expéditeur, équipe, URL du site", () => {
     expect(getMailFrom()).toBe("Wonder Tours <onboarding@resend.dev>");
-    expect(getTeamEmails()).toEqual(["contact@wondertours.bj"]);
-    expect(getAppUrl()).toBe("https://wondertours.bj");
+    expect(getTeamEmails()).toEqual(["contact@wondertoursandservices.com"]);
+    expect(getAppUrl()).toBe("https://wondertoursandservices.com");
   });
 
   test("getTeamEmails : liste séparée par des virgules", () => {
-    process.env.MAIL_TEAM_EMAIL = "a@wondertours.bj, b@wondertours.bj , ,";
-    expect(getTeamEmails()).toEqual(["a@wondertours.bj", "b@wondertours.bj"]);
+    process.env.MAIL_TEAM_EMAIL = "a@wondertoursandservices.com, b@wondertoursandservices.com , ,";
+    expect(getTeamEmails()).toEqual(["a@wondertoursandservices.com", "b@wondertoursandservices.com"]);
   });
 
   test("getAppUrl : APP_URL prioritaire, slashs finaux retirés", () => {

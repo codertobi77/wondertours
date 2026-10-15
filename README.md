@@ -131,11 +131,11 @@ Le seed (`prisma/seed.ts`) alimente la base depuis les données statiques du sit
 | `AUTH_SECRET` | `.env`, Vercel (Production) | Secret de signature des sessions JWT du dashboard (`openssl rand -base64 32`). **Requis** pour l'authentification. |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `.env` | Compte administrateur initial créé par le seed (le mot de passe n'est posé qu'à la création). |
 | `EDITOR_EMAIL` / `EDITOR_PASSWORD` | `.env` | Compte éditeur initial créé par le seed (idempotent, mêmes règles que l'admin). |
-| `NEXT_PUBLIC_SITE_URL` | optionnelle | URL publique pour les métadonnées ; à défaut `SITE_CONFIG.url` (`https://wondertours.bj`) |
+| `NEXT_PUBLIC_SITE_URL` | optionnelle | URL publique pour les métadonnées ; à défaut `SITE_CONFIG.url` (`https://wondertoursandservices.com`) |
 | `IMGBB_API_KEY` | `.env`, Vercel (Production) | Optionnelle — stockage distant imgBB pour la médiathèque. **Recommandée en prod** (FS Vercel en lecture seule) ; sans elle, fallback local `public/uploads/` (non persistant). |
 | `DEEPL_API_KEY` | `.env`, Vercel (Production) | Optionnelle — active `POST /api/dashboard/translate` (bouton « Traduire en anglais » des formulaires du dashboard) ; sans elle, la route répond `503`. |
 | `RESEND_API_KEY` | `.env`, Vercel (Production) | Optionnelle — active les emails transactionnels via Resend (accusé de réception contact, confirmation/notification réservation, mot de passe oublié, bienvenue). Sans elle : envoi ignoré avec log, aucune requête n'échoue. |
-| `MAIL_FROM` / `MAIL_TEAM_EMAIL` / `APP_URL` | `.env` | Optionnelles — expéditeur (défaut `Wonder Tours <onboarding@resend.dev>`, domaine de test Resend), destinataires des notifications internes (défaut `contact@wondertours.bj`), base des liens des emails (défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertours.bj` ; local : `http://localhost:3000`). |
+| `MAIL_FROM` / `MAIL_TEAM_EMAIL` / `APP_URL` | `.env` | Optionnelles — expéditeur (défaut `Wonder Tours <onboarding@resend.dev>`, domaine de test Resend), destinataires des notifications internes (défaut `contact@wondertoursandservices.com`), base des liens des emails (défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertoursandservices.com` ; local : `http://localhost:3000`). |
 
 ### Modèle `.env` local
 
@@ -147,21 +147,21 @@ DATABASE_URL="postgres://user:pass@localhost:5432/wondertours"
 AUTH_SECRET="<sortie de : openssl rand -base64 32>"
 
 # ── Comptes initiaux du dashboard (créés par `bun run db:seed` ; ignorés avec un warning si absents) ──
-ADMIN_EMAIL="admin@wondertours.bj"
+ADMIN_EMAIL="admin@wondertoursandservices.com"
 ADMIN_PASSWORD="<choisir un mot de passe>"
-EDITOR_EMAIL="editeur@wondertours.bj"
+EDITOR_EMAIL="editeur@wondertoursandservices.com"
 EDITOR_PASSWORD="<choisir un mot de passe>"
 
 # ── Emails transactionnels Resend — optionnel (sans clé : envois ignorés, aucune requête n'échoue) ──
 # RESEND_API_KEY="re_xxxxxxxxxxxx"
 # MAIL_FROM="Wonder Tours <onboarding@resend.dev>"    # domaine de test : ne délivre que vers l'email du compte Resend
-# MAIL_TEAM_EMAIL="contact@wondertours.bj"             # destinataires des notifications internes
+# MAIL_TEAM_EMAIL="contact@wondertoursandservices.com"             # destinataires des notifications internes
 # APP_URL="http://localhost:3000"                      # base des liens insérés dans les emails (mot de passe oublié…)
 
 # ── Autres services — optionnels ──
 # IMGBB_API_KEY="xxx"                                  # médiathèque distante (sinon fallback public/uploads/)
 # DEEPL_API_KEY="xxx"                                  # bouton « Traduire en anglais » du dashboard (sinon 503)
-# NEXT_PUBLIC_SITE_URL="https://wondertours.bj"        # métadonnées (metadataBase, canonicals)
+# NEXT_PUBLIC_SITE_URL="https://wondertoursandservices.com"        # métadonnées (metadataBase, canonicals)
 ```
 
 En production Vercel, requises : `DATABASE_URL`, `AUTH_SECRET` (+ `ADMIN_*` / `EDITOR_*` au premier seed) ; recommandées : `IMGBB_API_KEY` (uploads persistants), `RESEND_API_KEY` + `MAIL_FROM` (domaine vérifié Resend), `APP_URL` / `NEXT_PUBLIC_SITE_URL` sur le domaine final.

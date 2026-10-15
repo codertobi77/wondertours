@@ -2,7 +2,7 @@ export const SITE_CONFIG = {
   name: "Wonder Tours and Services",
   description: "Découvrez le Bénin, le Togo et le Ghana à travers des expériences authentiques avec plus de 20 ans d'expertise touristique.",
   descriptionEn: "Discover Benin, Togo and Ghana through authentic experiences with over 20 years of tourism expertise.",
-  url: "https://wondertours.bj",
+  url: "https://wondertoursandservices.com",
   ogImage: "/og-image.jpg",
   links: {
     whatsapp: "https://wa.me/22990000000",
@@ -11,7 +11,7 @@ export const SITE_CONFIG = {
     youtube: "https://youtube.com/@wondertours",
   },
   contact: {
-    email: "contact@wondertours.bj",
+    email: "contact@wondertoursandservices.com",
     phone: "+229 97 00 00 00",
     address: "Ouidah, Bénin",
   },

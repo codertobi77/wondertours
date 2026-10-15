@@ -19,7 +19,7 @@ async function authedRequest(
 ): Promise<Request> {
   const token = await createSessionToken({
     sub: "00000000-0000-0000-0000-000000000001",
-    email: "test@wondertours.bj",
+    email: "test@wondertoursandservices.com",
     role,
     name: "Test",
   });

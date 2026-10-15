@@ -20,7 +20,7 @@ beforeAll(() => {
 
 const PAYLOAD = {
   sub: "00000000-0000-0000-0000-000000000001",
-  email: "admin@wondertours.bj",
+  email: "admin@wondertoursandservices.com",
   role: "admin",
   name: "Admin Wonder Tours",
 };

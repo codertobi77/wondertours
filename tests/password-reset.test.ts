@@ -15,7 +15,7 @@ import { uniquePrefix } from "./helpers";
 
 describe("password-reset", () => {
   test("cycle complet : hash stocké, consommation, usage unique, TTL", async () => {
-    const email = `${uniquePrefix("reset")}@wondertours.bj`;
+    const email = `${uniquePrefix("reset")}@wondertoursandservices.com`;
     const user = await createUser({
       email,
       password: "motdepasse123",
@@ -61,7 +61,7 @@ describe("password-reset", () => {
   });
 
   test("nouvelle demande invalide les tokens précédents ; expiration refusée", async () => {
-    const email = `${uniquePrefix("reset2")}@wondertours.bj`;
+    const email = `${uniquePrefix("reset2")}@wondertoursandservices.com`;
     const user = await createUser({
       email,
       password: "motdepasse123",
@@ -99,7 +99,7 @@ describe("password-reset", () => {
   });
 
   test("intégration : reset via updateUser change le mot de passe vérifiable", async () => {
-    const email = `${uniquePrefix("reset3")}@wondertours.bj`;
+    const email = `${uniquePrefix("reset3")}@wondertoursandservices.com`;
     const user = await createUser({
       email,
       password: "motdepasse123",
