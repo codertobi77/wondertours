@@ -2,13 +2,16 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import imageCompression from "browser-image-compression";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, Copy, Check, Trash2 } from "lucide-react";
 import { readApiError } from "@/components/dashboard/api-error";
 
-/** Bloc d'upload : image (≤ 5 Mo) + texte alternatif optionnel → POST /api/dashboard/media. */
+/** Bloc d'upload : image (≤ 5 Mo) + texte alternatif optionnel → POST /api/dashboard/media.
+ * Les images raster sont d'abord compressées dans le navigateur (Phase 1b) :
+ * 1920 px max, qualité ~0.82, ≤ 1.5 Mo — SVG et GIF passent tels quels. */
 export function MediaUploader() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -27,8 +30,26 @@ export function MediaUploader() {
     setError(null);
     setSuccess(false);
     try {
+      let uploadFile: File = file;
+      if (file.type !== "image/svg+xml" && file.type !== "image/gif") {
+        try {
+          const compressed = await imageCompression(file, {
+            maxSizeMB: 1.5,
+            maxWidthOrHeight: 1920,
+            initialQuality: 0.82,
+            useWebWorker: true,
+          });
+          if (compressed.size < file.size) {
+            uploadFile = new File([compressed], file.name, {
+              type: compressed.type || file.type,
+            });
+          }
+        } catch {
+          // Compression impossible (format non supporté…) : on envoie l'original.
+        }
+      }
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", uploadFile);
       if (altText.trim()) {
         formData.append("altText", altText.trim());
       }

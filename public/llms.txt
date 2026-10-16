@@ -1,0 +1,39 @@
+# Wonder Tours and Services
+
+> Agence de voyage réceptive basée à Ouidah, Bénin. Circuits touristiques, séjours sur mesure, réservation d'hôtels et accompagnement de voyageurs au Bénin, au Togo et au Ghana, avec plus de 20 ans d'expertise touristique. Site en français (contenus également traduits en anglais).
+
+Contact: contact@wondertoursandservices.com · Téléphone/WhatsApp: +229 97 00 00 00 · Ouidah, Bénin
+
+## Pages principales
+
+- [Accueil](https://wondertoursandservices.com/): présentation de l'agence, circuits en vedette, services et témoignages
+- [Circuits](https://wondertoursandservices.com/circuits): catalogue complet des circuits touristiques avec filtres (destination, catégorie, prix, durée)
+- [Séjours](https://wondertoursandservices.com/sejours): organisation de séjours et prise en charge adaptée au voyage
+- [Hôtels](https://wondertoursandservices.com/hotels): réservation d'hébergements avec assistance
+- [Témoignages](https://wondertoursandservices.com/temoignages): avis vérifiés de voyageurs
+- [Blog](https://wondertoursandservices.com/blog): articles sur le tourisme, la culture vodoun, le patrimoine et les destinations ouest-africaines
+- [À propos](https://wondertoursandservices.com/a-propos): l'agence, son fondateur Eric Sylvestre Bokossa et son histoire
+- [Contact](https://wondertoursandservices.com/contact): formulaire de demande de renseignements, coordonnées et carte
+
+## Destinations
+
+Ouidah, Abomey, Porto-Novo, Cotonou, Ganvié, Grand-Popo (Bénin) ; extensions au Togo et au Ghana. Thématiques: culture, histoire, patrimoine, nature, vodoun, littoral, expériences locales.
+
+## Réserver / contacter
+
+- Réservation de circuit: bouton « Réserver » sur chaque page circuit, ou page [Contact](https://wondertoursandservices.com/contact)
+- WhatsApp: https://wa.me/22990000000
+
+## API JSON publique
+
+- [Circuits actifs](https://wondertoursandservices.com/api/circuits): liste paginée (paramètres: destination, category, featured, maxPrice, maxDuration, q, page, pageSize)
+- [Destinations](https://wondertoursandservices.com/api/destinations): destinations actives
+- [Catégories](https://wondertoursandservices.com/api/categories): catégories de circuits
+- [Services](https://wondertoursandservices.com/api/services): services de l'agence
+- [Témoignages](https://wondertoursandservices.com/api/testimonials): témoignages vérifiés
+- [Articles de blog](https://wondertoursandservices.com/api/blog): articles publiés, paginés
+
+## Autres fichiers
+
+- [sitemap.xml](https://wondertoursandservices.com/sitemap.xml): plan du site pour les moteurs de recherche
+- [robots.txt](https://wondertoursandservices.com/robots.txt): règles d'exploration
