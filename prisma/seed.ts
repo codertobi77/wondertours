@@ -4,7 +4,7 @@
  * Lancer : bun prisma/seed.ts (ou bun run db:seed)
  */
 import { PrismaClient } from "../lib/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { createPgAdapter } from "../lib/pg-adapter";
 import { CIRCUITS } from "../lib/data/circuits";
 import { BLOG_POSTS } from "../lib/data/blog";
 import { TESTIMONIALS } from "../lib/data/testimonials";
@@ -12,19 +12,9 @@ import { SERVICES, DESTINATIONS, CATEGORIES, SITE_CONFIG } from "../lib/constant
 import { slugify } from "../lib/slug";
 import bcrypt from "bcryptjs";
 
-// ⚠️ node-pg ≠ libpq : sslmode=require dans l'URI produit ssl={} qui
-// écrase le ssl du config (cf. pg/lib/connection-parameters.js) → on
-// retire le paramètre et on fixe ssl nous-même. Détail complet dans lib/db.ts.
-const dbUrl = process.env.DATABASE_URL ?? "";
-const url = dbUrl ? new URL(dbUrl) : null;
-const sslmode = url?.searchParams.get("sslmode") ?? null;
-const relaxSsl = sslmode === "require" || sslmode === "prefer";
-if (url && relaxSsl) url.searchParams.delete("sslmode");
-const adapter = new PrismaPg({
-  connectionString: url ? url.toString() : dbUrl,
-  ...(relaxSsl ? { ssl: { rejectUnauthorized: false } } : {}),
-});
-const prisma = new PrismaClient({ adapter });
+// Adapter pg partagé avec le client applicatif (TLS Aiven, retrait des
+// paramètres Prisma 6, plafond DATABASE_POOL_MAX) — cf. lib/pg-adapter.ts.
+const prisma = new PrismaClient({ adapter: createPgAdapter() });
 
 async function main() {
   console.log("🌱 Seed Wonder Tours…");

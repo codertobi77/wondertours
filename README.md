@@ -73,7 +73,7 @@ app/api/**/route.ts          Route handlers (Next.js) — HTTP seulement
 lib/services/*.ts            Couche services — logique métier, requêtes Prisma
         │
         ▼
-lib/db.ts                    Client Prisma singleton (adapter pg) + ré-exports
+lib/db.ts                    Client Prisma singleton (pool pg plafonné) + ré-exports
         │
         ▼
 PostgreSQL (Aiven / local)
@@ -84,12 +84,17 @@ PostgreSQL (Aiven / local)
 - **`app/api/**/route.ts`** — Route handlers Next.js. Valident l'entrée avec des schémas **Zod** (`parseQuery` / `parseBody` de `lib/api/utils.ts`), appellent un service et renvoient du JSON via les helpers `ok`, `created`, `badRequest`, `notFound`, `conflict`… Ils ne contiennent aucune logique métier.
 - **`lib/services/*.ts`** — Logique métier et accès aux données : un module par domaine (`circuits`, `destinations`, `bookings`, `contact-requests`, `blog`, `testimonials`, `categories`, `services`, `settings`, `stats`, `media`, `users`, `password-reset`), complétés par les clients externes `imgbb` (hébergement d'images), `deepl` (traduction) et `mailer` (emails transactionnels Resend — templates dans `mail-templates.ts`). Les services construisent les `where` Prisma (filtres, pagination) et retournent des types inférés.
 - **`lib/db.ts`** — Client Prisma en singleton (pattern `globalThis` pour le hot-reload en dev) construit sur l'adapter driver `@prisma/adapter-pg`. Ré-exporte les types du modèle (`User`, `Circuit`…).
+- **`lib/pg-adapter.ts`** — Construction partagée (app + seed) de l'adapter pg : TLS Aiven (`sslmode` neutralisé), retrait des paramètres Prisma 6 ignorés par node-pg (`connection_limit`, `pool_timeout`) et plafond de connexions serveur `DATABASE_POOL_MAX` (défaut 2) — le plan Aiven Hobbyist n'offre que ~5 slots applicatifs (`max_connections=20`, dont 3 réservés aux superusers et ~13 consommés par les workers Aiven).
 - **`lib/api/utils.ts`** — Helpers transverses : schémas de pagination, réponses JSON normalisées (y compris sérialisation BigInt), mapping d'erreurs Prisma (`P2002` → 409, `P2025` → 404, `P2003` → 400) via l'enveloppe `handleRoute`.
 - **`prisma/schema.prisma`** — Schéma de 13 tables : `users`, `destinations`, `categories`, `circuits`, `testimonials`, `blog_categories`, `blog_posts`, `services`, `bookings`, `contact_requests`, `settings`, `media_library`, `password_reset_tokens` (+ 6 enums : rôle, difficulté, type/statut de réservation, type de demande, statut de contact). Client généré dans `lib/generated/prisma` (gitignoré).
 
 ### TLS PostgreSQL (important)
 
-Prisma 7 se connecte via le driver `pg` (node-postgres), dont la sémantique `sslmode` diffère de libpq : `sslmode=require` dans l'URI produit un `ssl={}` **vérifiant strictement** la chaîne de certificats, ce qui échoue avec la CA managée Aiven (`self signed certificate in certificate chain`). `lib/db.ts` retire donc `sslmode` de l'URI et fixe `ssl: { rejectUnauthorized: false }` (chiffrement sans vérification, conforme libpq).
+Prisma 7 se connecte via le driver `pg` (node-postgres), dont la sémantique `sslmode` diffère de libpq : `sslmode=require` dans l'URI produit un `ssl={}` **vérifiant strictement** la chaîne de certificats, ce qui échoue avec la CA managée Aiven (`self signed certificate in certificate chain`). `lib/pg-adapter.ts` retire donc `sslmode` de l'URI et fixe `ssl: { rejectUnauthorized: false }` (chiffrement sans vérification, conforme libpq).
+
+### Pool de connexions (important)
+
+Le plan Aiven Hobbyist plafonne `max_connections` à 20 : 3 slots réservés aux superusers, ~13 consommés par les workers Aiven (pg_cron, TimescaleDB, management-agent…) — soit **~5 slots réellement disponibles**, partagés par tous les clients de la base (Vercel, standalone LWS, seed, psql). `lib/pg-adapter.ts` plafonne donc le pool node-pg à `DATABASE_POOL_MAX` connexions par process (défaut 2, échec propre `P2024` après ~10 s si saturé) et retire de l'URI les paramètres `connection_limit` / `pool_timeout` (sémantique Prisma 6 que le driver adapter ignore — sans plafond explicite, node-pg monte à 10 connexions par pool → `P2037 Too many connections`).
 
 ### Endpoints API
 
@@ -128,6 +133,7 @@ Le seed (`prisma/seed.ts`) alimente la base depuis les données statiques du sit
 | Variable | Où | Description |
 |----------|-----|-------------|
 | `DATABASE_URL` | `.env` (local), `.env.prod`, Vercel (Production) | URI PostgreSQL. Local : `postgres://…` (sans ssl). Aiven : `postgres://…?sslmode=require` (le paramètre est neutralisé au runtime, cf. TLS). |
+| `DATABASE_POOL_MAX` | optionnelle | Plafond de connexions serveur par process (défaut 2). À laisser faible : Aiven Hobbyist n'offre que ~5 slots applicatifs, partagés entre tous les clients de la base. |
 | `AUTH_SECRET` | `.env`, Vercel (Production) | Secret de signature des sessions JWT du dashboard (`openssl rand -base64 32`). **Requis** pour l'authentification. |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `.env` | Compte administrateur initial créé par le seed (le mot de passe n'est posé qu'à la création). |
 | `EDITOR_EMAIL` / `EDITOR_PASSWORD` | `.env` | Compte éditeur initial créé par le seed (idempotent, mêmes règles que l'admin). |

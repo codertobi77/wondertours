@@ -15,24 +15,12 @@ import {
   type MediaFile,
   type PasswordResetToken,
 } from "@/lib/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { createPgAdapter } from "@/lib/pg-adapter";
 
-// Prisma 7 exige un driver adapter : on utilise pg.
-// ⚠️ node-pg ≠ libpq : quand l'URI contient sslmode=require/prefer,
-// pg-connection-string produit ssl={} (vérification stricte) et pg fait
-// Object.assign(config, parse(connectionString)) — ce ssl={} ÉCRASE celui
-// du config externe (cf. pg/lib/connection-parameters.js). Or libpq chiffre
-// sans vérifier la chaîne pour require (CA managée type Aiven).
-// → on retire sslmode de l'URI et on fixe ssl explicitement ici.
-const dbUrl = process.env.DATABASE_URL ?? "";
-const url = dbUrl ? new URL(dbUrl) : null;
-const sslmode = url?.searchParams.get("sslmode") ?? null;
-const relaxSsl = sslmode === "require" || sslmode === "prefer";
-if (url && relaxSsl) url.searchParams.delete("sslmode");
-const adapter = new PrismaPg({
-  connectionString: url ? url.toString() : dbUrl,
-  ...(relaxSsl ? { ssl: { rejectUnauthorized: false } } : {}),
-});
+// Prisma 7 exige un driver adapter pg. La construction (TLS Aiven, retrait
+// des paramètres Prisma 6 ignorés par node-pg, plafond DATABASE_POOL_MAX)
+// est partagée avec le seed — cf. lib/pg-adapter.ts.
+const adapter = createPgAdapter();
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

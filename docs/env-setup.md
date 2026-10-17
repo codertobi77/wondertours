@@ -6,7 +6,11 @@ Les fichiers `.env*` sont gitignorés. Next.js/Bun chargent `.env.local` (priori
 
 ### `DATABASE_URL` — requis
 
-URI PostgreSQL. Local : `postgres://user:pass@localhost:5432/wondertours` (sans ssl). Aiven : `postgres://…?sslmode=require` (le paramètre est neutralisé au runtime, cf. `lib/db.ts`).
+URI PostgreSQL. Local : `postgres://user:pass@localhost:5432/wondertours` (sans ssl). Aiven : `postgres://…?sslmode=require` (le paramètre est neutralisé au runtime, cf. `lib/pg-adapter.ts`).
+
+### `DATABASE_POOL_MAX` — optionnel
+
+Plafond de connexions serveur ouvertes par process (défaut 2). Aiven Hobbyist n'offre que ~5 slots applicatifs au total (`max_connections=20`, dont 3 réservés aux superusers et ~13 consommés par les workers Aiven) — ne pas l'augmenter sans vérifier `SHOW max_connections`. Cf. `lib/pg-adapter.ts`.
 
 ### `AUTH_SECRET` — requis (dashboard)
 

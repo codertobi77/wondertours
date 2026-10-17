@@ -54,11 +54,12 @@ Dans *Setup Node.js App* → **Environment variables** :
 
 | Variable | Valeur |
 |----------|-------|
-| `DATABASE_URL` | URI **Aiven** (`…?sslmode=require` — le TLS est géré par `lib/db.ts`) |
+| `DATABASE_URL` | URI **Aiven** (`…?sslmode=require` — le TLS est géré par `lib/pg-adapter.ts`) |
 | `AUTH_SECRET` | secret JWT du dashboard (**requis** ; `openssl rand -base64 32`) |
 | `IMGBB_API_KEY` | recommandée — uploads persistants de la médiathèque |
 | `DEEPL_API_KEY` | optionnelle — traduction DeepL (sinon la route répond 503) |
 | `HOSTNAME` | `0.0.0.0` (recommandé — garantit un bind local même si l'hébergeur exporte `HOSTNAME`) |
+| `DATABASE_POOL_MAX` | optionnelle — plafond du pool pg du process (défaut 2 ; Aiven Hobbyist : garder ≤ 3) |
 
 `NODE_ENV` est géré par le mode Production de l'application — ne pas le définir. Après chaque modification : *Save* puis *Restart*.
 
@@ -118,7 +119,7 @@ Le mutualisé LWS n'expose ni SSH ni API de déploiement : **l'upload vers cPane
 
 ## 9. Bascule future vers le PostgreSQL local LWS *(documentée — pas encore requise)*
 
-Avantage : latence minimale + sauvegardes quotidiennes LWS incluses. Le code **n'a pas besoin de modification** — une URI sans `sslmode` donne une connexion locale sans SSL (`lib/db.ts:29`).
+Avantage : latence minimale + sauvegardes quotidiennes LWS incluses. Le code **n'a pas besoin de modification** — une URI sans `sslmode` donne une connexion locale sans SSL (cf. `lib/pg-adapter.ts`).
 
 1. **Créer la base** : cPanel → *PostgreSQL Databases* — base et utilisateur (noms préfixés par le compte, ex. `cpuser_wondertours` / `cpuser_wtadmin`), associer l'utilisateur à la base avec *ALL PRIVILEGES*.
 2. **Créer le schéma** (sans connexion à la base — génère du SQL) :

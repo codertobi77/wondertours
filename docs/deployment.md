@@ -21,7 +21,7 @@ Procédure complète pour déployer l'application Next.js 16 + Prisma 7 sur **Ve
    `postgres://avnadmin:…@pg-…aivencloud.com:PORT/db?sslmode=require`
 
 > L'URI contient déjà `?sslmode=require`, nécessaire pour Aiven. Le driver `pg`
-> (`@prisma/adapter-pg` dans `lib/db.ts`) accepte l'URI telle quelle.
+> (`@prisma/adapter-pg` dans `lib/pg-adapter.ts`) accepte l'URI telle quelle.
 
 ### 1.2 Migrer le schéma (depuis la machine locale)
 
@@ -83,6 +83,9 @@ Notes :
 
 - `AUTH_SECRET` — **requis** pour le dashboard (sessions JWT) :
   `echo "<secret>" | bunx vercel env add AUTH_SECRET production`
+- `DATABASE_POOL_MAX` — optionnelle : plafond de connexions pg par instance de
+  fonction (défaut 2). Aiven Hobbyist n'offre que ~5 slots applicatifs au
+  total — ne pas l'augmenter sans avoir vérifié `SHOW max_connections`.
 - `IMGBB_API_KEY` — **recommandé** : héberge les uploads de la médiathèque
   sur imgBB. Sans elle, la médiathèque retombe sur `public/uploads/`, non
   persistant sur Vercel (FS en lecture seule) :
