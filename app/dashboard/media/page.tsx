@@ -1,7 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { listMediaFiles } from "@/lib/services/media";
 import { SearchInput } from "@/components/dashboard/search-input";
-import { MediaUploader, MediaCardActions } from "@/components/dashboard/media-actions";
+import {
+  MediaUploader,
+  MediaCardActions,
+  MediaAltTextEditor,
+} from "@/components/dashboard/media-actions";
 import { formatDate, formatFileSize } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -58,11 +62,11 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
                   <p className="text-xs text-gray-500">
                     {formatFileSize(file.size)} • {formatDate(file.createdAt)}
                   </p>
-                  {file.altText && (
-                    <p className="text-xs text-gray-500 truncate" title={file.altText}>
-                      {file.altText}
-                    </p>
-                  )}
+                  <MediaAltTextEditor
+                    id={file.id}
+                    altText={file.altText}
+                    altTextEn={file.altTextEn}
+                  />
                 </div>
                 <MediaCardActions id={file.id} url={file.url} />
               </CardContent>

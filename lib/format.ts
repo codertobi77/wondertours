@@ -63,6 +63,23 @@ export function parseItineraryLines(value: string): {
   });
 }
 
+/** Inverse de splitLines : tableau de chaînes → texte « un par ligne ». */
+export function joinLines(lines: string[]): string {
+  return lines.filter(Boolean).join("\n");
+}
+
+/**
+ * Inverse de parseItineraryLines : { day, title, description }[] →
+ * lignes « Titre : description » prêtes à remplir un textarea.
+ */
+export function formatItineraryLines(
+  days: { day: number; title: string; description?: string | null }[]
+): string {
+  return days
+    .map((d) => (d.description ? `${d.title} : ${d.description}` : d.title))
+    .join("\n");
+}
+
 /** Découpe "histoire, bénin, culture" → ["histoire", "bénin", "culture"]. */
 export function splitTags(value: string): string[] {
   return value

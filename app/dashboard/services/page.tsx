@@ -78,6 +78,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                 <RowActions
                   id={service.id}
                   resource="services"
+                  editHref={`/dashboard/services/${service.id}`}
                   enableDelete
                   deleteLabel="Supprimer le service"
                   confirmMessage={`Supprimer le service « ${service.title} » ?`}

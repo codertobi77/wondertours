@@ -20,9 +20,9 @@ export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailMo
   // Champs FR avec repli automatique sur la traduction EN (ou
   // inversement) quand la colonne En n'est pas renseignée en base.
   const title = isFr ? circuit.title : circuit.titleEn || circuit.title;
-  const category = isFr
-    ? circuit.category
-    : circuit.categoryEn || circuit.category;
+  const categories = isFr
+    ? circuit.categories
+    : circuit.categoriesEn || circuit.categories;
   const destination = isFr
     ? circuit.destination
     : circuit.destinationEn || circuit.destination;
@@ -32,6 +32,15 @@ export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailMo
   const description = isFr
     ? circuit.description
     : circuit.descriptionEn || circuit.description;
+  // Champs JSON : versions EN si renseignées, repli FR sinon.
+  const highlights =
+    !isFr && circuit.highlightsEn?.length ? circuit.highlightsEn : circuit.highlights;
+  const itinerary =
+    !isFr && circuit.itineraryEn?.length ? circuit.itineraryEn : circuit.itinerary;
+  const included =
+    !isFr && circuit.includedEn?.length ? circuit.includedEn : circuit.included;
+  const excluded =
+    !isFr && circuit.excludedEn?.length ? circuit.excludedEn : circuit.excluded;
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose}>
@@ -44,7 +53,9 @@ export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailMo
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <div className="flex flex-wrap gap-2 mb-3">
-            <Badge variant="default">{category}</Badge>
+            {categories.map((category) => (
+              <Badge key={category} variant="default">{category}</Badge>
+            ))}
             <Badge variant="secondary">{destination}</Badge>
           </div>
           <h2 className="font-heading text-2xl md:text-3xl font-bold text-white mb-2">
@@ -90,7 +101,7 @@ export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailMo
             {isFr ? "Points forts" : "Highlights"}
           </h3>
           <div className="grid md:grid-cols-2 gap-3">
-            {circuit.highlights.map((highlight, index) => (
+            {highlights.map((highlight, index) => (
               <div key={index} className="flex items-start gap-2">
                 <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <span className="text-text-secondary text-sm">{highlight}</span>
@@ -104,7 +115,7 @@ export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailMo
             {isFr ? "Programme" : "Itinerary"}
           </h3>
           <div className="space-y-4">
-            {circuit.itinerary.map((day) => (
+            {itinerary.map((day) => (
               <div key={day.day} className="bg-background p-4 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <Badge variant="accent">{isFr ? `Jour ${day.day}` : `Day ${day.day}`}</Badge>
@@ -124,7 +135,7 @@ export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailMo
               {isFr ? "Ce qui est inclus" : "What's included"}
             </h3>
             <ul className="space-y-2">
-              {circuit.included.map((item, index) => (
+              {included.map((item, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                   <span className="text-text-secondary text-sm">{item}</span>
@@ -137,7 +148,7 @@ export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailMo
               {isFr ? "Ce qui n'est pas inclus" : "What's not included"}
             </h3>
             <ul className="space-y-2">
-              {circuit.excluded.map((item, index) => (
+              {excluded.map((item, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <X className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
                   <span className="text-text-secondary text-sm">{item}</span>

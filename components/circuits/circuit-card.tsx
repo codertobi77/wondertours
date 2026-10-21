@@ -22,9 +22,9 @@ export function CircuitCard({ circuit }: CircuitCardProps) {
   // Champs FR avec repli automatique sur la traduction EN (ou
   // inversement) quand la colonne En n'est pas renseignée en base.
   const title = isFr ? circuit.title : circuit.titleEn || circuit.title;
-  const category = isFr
-    ? circuit.category
-    : circuit.categoryEn || circuit.category;
+  const categories = isFr
+    ? circuit.categories
+    : circuit.categoriesEn || circuit.categories;
   const destination = isFr
     ? circuit.destination
     : circuit.destinationEn || circuit.destination;
@@ -44,8 +44,12 @@ export function CircuitCard({ circuit }: CircuitCardProps) {
         <Card className="group h-full">
           <CardImage src={circuit.image} alt={title} />
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <Badge variant="default">{category}</Badge>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <Badge key={category} variant="default">{category}</Badge>
+                ))}
+              </div>
               <div className="flex items-center text-text-secondary text-sm">
                 <Clock className="w-4 h-4 mr-1" />
                 {duration}

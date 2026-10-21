@@ -12,6 +12,7 @@ import {
   deleteCircuit,
 } from "@/lib/services/circuits";
 import { uniqueSlug } from "@/lib/slug";
+import { DbNull } from "@/lib/db";
 
 export async function GET(
   request: Request,
@@ -37,10 +38,30 @@ export async function PATCH(
     const [body, errorResponse] = await parseBody(request, circuitUpdateSchema);
     if (errorResponse) return errorResponse;
 
-    // Si le titre change, régénérer un slug unique (sauf si explicite).
     const updates: Record<string, unknown> = { ...body };
+    // Multi-catégories : categoryIds → relation categories (set = remplace tout,
+    // tableau vide = retire toutes les catégories, null = purge).
+    delete updates.categoryIds;
+    if (body.categoryIds !== undefined) {
+      const categoryIds: string[] = body.categoryIds ?? [];
+      updates.categories = {
+        set: categoryIds.map((categoryId) => ({ id: categoryId })),
+      };
+    }
+    // Si le titre change, régénérer un slug unique (sauf si explicite).
     if (body.title) {
       updates.slug = await uniqueSlug("circuit", body.title, id);
+    }
+    // Champs Json : null → DbNull (convention Prisma 7).
+    for (const field of [
+      "gallery", "highlights", "highlightsEn",
+      "itinerary", "itineraryEn",
+      "included", "includedEn",
+      "excluded", "excludedEn",
+    ]) {
+      if (field in updates && (updates[field] === null || updates[field] === undefined)) {
+        updates[field] = DbNull;
+      }
     }
 
     try {

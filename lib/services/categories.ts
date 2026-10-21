@@ -34,6 +34,11 @@ export async function listCategories(
   return { items, total, page, pageSize };
 }
 
+/** Catégorie par id (dashboard — page d'édition). */
+export async function getCategoryById(id: string): Promise<Category | null> {
+  return prisma.category.findUnique({ where: { id } });
+}
+
 export type CategoryCreateInput = Prisma.CategoryUncheckedCreateInput;
 export type CategoryUpdateInput = Prisma.CategoryUncheckedUpdateInput;
 

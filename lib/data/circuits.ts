@@ -3,7 +3,8 @@ export interface Circuit {
   slug: string;
   title: string;
   destination: string;
-  category: string;
+  /** Un circuit peut appartenir à plusieurs catégories (m-n). */
+  categories: string[];
   duration: string;
   price: number;
   image: string;
@@ -15,9 +16,13 @@ export interface Circuit {
   // Traductions anglaises optionnelles (repli FR si absentes).
   titleEn?: string;
   destinationEn?: string;
-  categoryEn?: string;
+  categoriesEn?: string[];
   durationEn?: string;
   descriptionEn?: string;
+  highlightsEn?: string[];
+  itineraryEn?: { day: number; title: string; description: string }[];
+  includedEn?: string[];
+  excludedEn?: string[];
 }
 
 export const CIRCUITS: Circuit[] = [];

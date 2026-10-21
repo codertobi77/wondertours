@@ -132,6 +132,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                       <RowActions
                         id={user.id}
                         resource="users"
+                        editHref={`/dashboard/users/${user.id}`}
                         enableDelete
                         deleteLabel="Supprimer l'utilisateur"
                         confirmMessage={`Supprimer l'utilisateur ${user.firstName} ${user.lastName} ?`}

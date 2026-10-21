@@ -23,12 +23,12 @@ import type { Testimonial } from "@/lib/db";
 export const FALLBACK_IMAGE = "/images/placeholder.svg";
 
 /** Json → tableau de chaînes (highlights, included, excluded...). */
-function toStringArray(value: unknown): string[] {
+export function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
 /** Json → itinéraire typé (programme jour par jour). */
-function toItinerary(
+export function toItinerary(
   value: unknown
 ): { day: number; title: string; description: string }[] {
   if (!Array.isArray(value)) return [];
@@ -74,8 +74,10 @@ export function toCircuitVM(circuit: CircuitWithRelations): StaticCircuit {
     titleEn: circuit.titleEn ?? undefined,
     destination: circuit.destination?.name ?? "Bénin",
     destinationEn: circuit.destination?.nameEn ?? undefined,
-    category: circuit.category?.name ?? "Circuit",
-    categoryEn: circuit.category?.nameEn ?? undefined,
+    categories: circuit.categories.map((category) => category.name),
+    categoriesEn: circuit.categories.map(
+      (category) => category.nameEn ?? category.name
+    ),
     duration: formatDuration(circuit.durationDays),
     durationEn: formatDurationEn(circuit.durationDays),
     price: Number(circuit.price),
@@ -83,9 +85,13 @@ export function toCircuitVM(circuit: CircuitWithRelations): StaticCircuit {
     description: circuit.description ?? "",
     descriptionEn: circuit.descriptionEn ?? undefined,
     highlights: toStringArray(circuit.highlights),
+    highlightsEn: toStringArray(circuit.highlightsEn),
     itinerary: toItinerary(circuit.itinerary),
+    itineraryEn: toItinerary(circuit.itineraryEn),
     included: toStringArray(circuit.included),
+    includedEn: toStringArray(circuit.includedEn),
     excluded: toStringArray(circuit.excluded),
+    excludedEn: toStringArray(circuit.excludedEn),
   };
 }
 

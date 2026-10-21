@@ -101,7 +101,7 @@ export default async function CircuitsPage({ searchParams }: CircuitsPageProps) 
                     {circuit.destination?.name ?? "—"}
                   </td>
                   <td className="px-6 py-4 text-gray-600">
-                    {circuit.category?.name ?? "—"}
+                    {circuit.categories.map((c) => c.name).join(", ") || "—"}
                   </td>
                   <td className="px-6 py-4 text-gray-600">
                     {formatDuration(circuit.durationDays)}
@@ -130,6 +130,7 @@ export default async function CircuitsPage({ searchParams }: CircuitsPageProps) 
                       <RowActions
                         id={circuit.id}
                         resource="circuits"
+                        editHref={`/dashboard/circuits/${circuit.id}`}
                         enableDelete
                         deleteLabel="Supprimer le circuit"
                         confirmMessage={`Supprimer le circuit « ${circuit.title} » ?`}

@@ -21,7 +21,7 @@ async function main() {
   console.log(`✔ circuits actifs: ${circuits.total} (page 1: ${circuits.items.length})`);
   const ouidah = await getCircuitBySlug("decouverte-ouidah");
   if (!ouidah) throw new Error("Circuit decouverte-ouidah introuvable");
-  console.log(`✔ circuit par slug: ${ouidah.title} — destination: ${ouidah.destination?.name} / catégorie: ${ouidah.category?.name}`);
+  console.log(`✔ circuit par slug: ${ouidah.title} — destination: ${ouidah.destination?.name} / catégories: ${ouidah.categories.map((c) => c.name).join(", ") || "—"}`);
 
   const filtered = await listCircuits({ destinationSlug: "ouidah" });
   console.log(`✔ filtre destination=ouidah: ${filtered.total}`);

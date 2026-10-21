@@ -96,6 +96,7 @@ export default async function TestimonialsPage({
                   <RowActions
                     id={testimonial.id}
                     resource="testimonials"
+                    editHref={`/dashboard/testimonials/${testimonial.id}`}
                     enableDelete
                     deleteLabel="Supprimer le témoignage"
                     confirmMessage={`Supprimer le témoignage de « ${testimonial.name} » ?`}

@@ -10,55 +10,186 @@ import { Select } from "@/components/ui/select";
 import { ArrowLeft, Save } from "lucide-react";
 import { readApiError } from "@/components/dashboard/api-error";
 import { TranslateButton } from "@/components/dashboard/translate-button";
-import { parseItineraryLines, splitLines } from "@/lib/format";
+import {
+  formatItineraryLines,
+  joinLines,
+  parseItineraryLines,
+  splitLines,
+} from "@/lib/format";
 
 interface Option {
   value: string;
   label: string;
 }
 
-const EMPTY = {
-  title: "",
-  titleEn: "",
-  subtitle: "",
-  subtitleEn: "",
-  description: "",
-  descriptionEn: "",
-  durationDays: "",
-  durationNights: "",
-  itinerary: "",
-  highlights: "",
-  included: "",
-  excluded: "",
-  destinationId: "",
-  categoryId: "",
-  price: "",
-  difficulty: "moderate",
-  minParticipants: "",
-  maxParticipants: "",
-  imageUrl: "",
-  isFeatured: false,
-  isActive: true,
-};
+/**
+ * Données de préremplissage en mode édition (objets JSON simples :
+ * le Decimal Prisma est converti par la page serveur appelante).
+ */
+export interface CircuitFormInitial {
+  id: string;
+  title: string;
+  titleEn?: string | null;
+  subtitle?: string | null;
+  subtitleEn?: string | null;
+  description?: string | null;
+  descriptionEn?: string | null;
+  destinationId?: string | null;
+  categoryIds?: string[];
+  durationDays?: number | null;
+  durationNights?: number | null;
+  price?: number | string;
+  difficulty?: string | null;
+  minParticipants?: number | null;
+  maxParticipants?: number | null;
+  imageUrl?: string | null;
+  highlights?: string[];
+  highlightsEn?: string[];
+  itinerary?: { day: number; title: string; description: string }[];
+  itineraryEn?: { day: number; title: string; description: string }[];
+  included?: string[];
+  includedEn?: string[];
+  excluded?: string[];
+  excludedEn?: string[];
+  isFeatured?: boolean;
+  isActive?: boolean;
+}
+
+function optionalString(value: string | null | undefined): string {
+  return value ?? "";
+}
+
+function optionalNumberField(value: number | null | undefined): string {
+  return value != null ? String(value) : "";
+}
+
+/** Préremplissage depuis un enregistrement existant (ou formulaire vierge). */
+function toFormState(initial?: CircuitFormInitial) {
+  return {
+    title: optionalString(initial?.title),
+    titleEn: optionalString(initial?.titleEn),
+    subtitle: optionalString(initial?.subtitle),
+    subtitleEn: optionalString(initial?.subtitleEn),
+    description: optionalString(initial?.description),
+    descriptionEn: optionalString(initial?.descriptionEn),
+    durationDays: optionalNumberField(initial?.durationDays),
+    durationNights: optionalNumberField(initial?.durationNights),
+    itinerary: initial?.itinerary ? formatItineraryLines(initial.itinerary) : "",
+    itineraryEn: initial?.itineraryEn
+      ? formatItineraryLines(initial.itineraryEn)
+      : "",
+    highlights: initial?.highlights ? joinLines(initial.highlights) : "",
+    highlightsEn: initial?.highlightsEn ? joinLines(initial.highlightsEn) : "",
+    included: initial?.included ? joinLines(initial.included) : "",
+    includedEn: initial?.includedEn ? joinLines(initial.includedEn) : "",
+    excluded: initial?.excluded ? joinLines(initial.excluded) : "",
+    excludedEn: initial?.excludedEn ? joinLines(initial.excludedEn) : "",
+    destinationId: optionalString(initial?.destinationId),
+    categoryIds: initial?.categoryIds ?? [],
+    price: initial?.price != null ? String(initial.price) : "",
+    difficulty: initial?.difficulty ?? "moderate",
+    minParticipants: optionalNumberField(initial?.minParticipants),
+    maxParticipants: optionalNumberField(initial?.maxParticipants),
+    imageUrl: optionalString(initial?.imageUrl),
+    isFeatured: initial?.isFeatured ?? false,
+    isActive: initial?.isActive ?? true,
+  };
+}
+
+type FormState = ReturnType<typeof toFormState>;
 
 export function CircuitForm({
   destinations,
   categories,
+  initial,
 }: {
   destinations: Option[];
   categories: Option[];
+  initial?: CircuitFormInitial;
 }) {
   const router = useRouter();
-  const [form, setForm] = useState(EMPTY);
+  const isEdit = Boolean(initial?.id);
+  const [form, setForm] = useState<FormState>(() => toFormState(initial));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function update<K extends keyof typeof EMPTY>(key: K, value: (typeof EMPTY)[K]) {
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  /** (Dé)sélectionne une catégorie (multi-sélection m-n). */
+  function toggleCategory(id: string, checked: boolean) {
+    setForm((prev) => ({
+      ...prev,
+      categoryIds: checked
+        ? [...prev.categoryIds, id]
+        : prev.categoryIds.filter((categoryId) => categoryId !== id),
+    }));
   }
 
   function optionalNumber(value: string): number | null {
     return value.trim() ? Number(value) : null;
+  }
+
+  /**
+   * Champs FR aplatis envoyés au bouton Traduire : textes simples + une
+   * clé par ligne de points forts / programme / inclus / non inclus.
+   */
+  function translateFields(): Record<string, string> {
+    const fields: Record<string, string> = {
+      title: form.title,
+      subtitle: form.subtitle,
+      description: form.description,
+    };
+    splitLines(form.highlights).forEach((line, index) => {
+      fields[`highlight-${index}`] = line;
+    });
+    parseItineraryLines(form.itinerary).forEach((day, index) => {
+      fields[`itinerary-${index}`] = day.description
+        ? `${day.title} : ${day.description}`
+        : day.title;
+    });
+    splitLines(form.included).forEach((line, index) => {
+      fields[`included-${index}`] = line;
+    });
+    splitLines(form.excluded).forEach((line, index) => {
+      fields[`excluded-${index}`] = line;
+    });
+    return fields;
+  }
+
+  /** Reconstitue les textareas EN depuis les clés traduites. */
+  function applyTranslations(texts: Record<string, string>) {
+    setForm((prev) => {
+      const pickList = (prefix: string, source: string) => {
+        const lines = splitLines(source);
+        if (lines.length === 0 || texts[`${prefix}-0`] === undefined) return null;
+        return lines
+          .map((_, index) => texts[`${prefix}-${index}`] ?? "")
+          .filter(Boolean)
+          .join("\n");
+      };
+      const itineraryLines = parseItineraryLines(prev.itinerary).map((day) =>
+        day.description ? `${day.title} : ${day.description}` : day.title
+      );
+      const itineraryEn =
+        itineraryLines.length > 0 && texts["itinerary-0"] !== undefined
+          ? itineraryLines
+              .map((_, index) => texts[`itinerary-${index}`] ?? "")
+              .filter(Boolean)
+              .join("\n")
+          : null;
+      return {
+        ...prev,
+        titleEn: texts.title ?? prev.titleEn,
+        subtitleEn: texts.subtitle ?? prev.subtitleEn,
+        descriptionEn: texts.description ?? prev.descriptionEn,
+        highlightsEn: pickList("highlight", prev.highlights) ?? prev.highlightsEn,
+        itineraryEn: itineraryEn ?? prev.itineraryEn,
+        includedEn: pickList("included", prev.included) ?? prev.includedEn,
+        excludedEn: pickList("excluded", prev.excluded) ?? prev.excludedEn,
+      };
+    });
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -74,33 +205,42 @@ export function CircuitForm({
     }
     setBusy(true);
     try {
-      const response = await fetch("/api/dashboard/circuits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: form.title,
-          titleEn: form.titleEn || null,
-          subtitle: form.subtitle || null,
-          subtitleEn: form.subtitleEn || null,
-          description: form.description || null,
-          descriptionEn: form.descriptionEn || null,
-          destinationId: form.destinationId || null,
-          categoryId: form.categoryId || null,
-          durationDays: optionalNumber(form.durationDays),
-          durationNights: optionalNumber(form.durationNights),
-          price: Number(form.price),
-          difficulty: form.difficulty,
-          minParticipants: optionalNumber(form.minParticipants),
-          maxParticipants: optionalNumber(form.maxParticipants),
-          imageUrl: form.imageUrl || null,
-          highlights: splitLines(form.highlights),
-          itinerary: parseItineraryLines(form.itinerary),
-          included: splitLines(form.included),
-          excluded: splitLines(form.excluded),
-          isFeatured: form.isFeatured,
-          isActive: form.isActive,
-        }),
-      });
+      const response = await fetch(
+        isEdit
+          ? `/api/dashboard/circuits/${initial!.id}`
+          : "/api/dashboard/circuits",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: form.title,
+            titleEn: form.titleEn || null,
+            subtitle: form.subtitle || null,
+            subtitleEn: form.subtitleEn || null,
+            description: form.description || null,
+            descriptionEn: form.descriptionEn || null,
+            destinationId: form.destinationId || null,
+            categoryIds: form.categoryIds,
+            durationDays: optionalNumber(form.durationDays),
+            durationNights: optionalNumber(form.durationNights),
+            price: Number(form.price),
+            difficulty: form.difficulty,
+            minParticipants: optionalNumber(form.minParticipants),
+            maxParticipants: optionalNumber(form.maxParticipants),
+            imageUrl: form.imageUrl || null,
+            highlights: splitLines(form.highlights),
+            highlightsEn: splitLines(form.highlightsEn),
+            itinerary: parseItineraryLines(form.itinerary),
+            itineraryEn: parseItineraryLines(form.itineraryEn),
+            included: splitLines(form.included),
+            includedEn: splitLines(form.includedEn),
+            excluded: splitLines(form.excluded),
+            excludedEn: splitLines(form.excludedEn),
+            isFeatured: form.isFeatured,
+            isActive: form.isActive,
+          }),
+        }
+      );
       if (!response.ok) {
         setError(await readApiError(response));
         return;
@@ -122,8 +262,14 @@ export function CircuitForm({
             Retour
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Nouveau circuit</h1>
-            <p className="text-gray-600 mt-1">Créez un nouveau circuit touristique</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isEdit ? "Modifier le circuit" : "Nouveau circuit"}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {isEdit
+                ? "Mettez à jour les informations du circuit"
+                : "Créez un nouveau circuit touristique"}
+            </p>
           </div>
         </div>
         <Button type="submit" disabled={busy}>
@@ -159,7 +305,7 @@ export function CircuitForm({
               />
               <Input
                 label="Sous-titre (FR)"
-                placeholder="Découvrez l&apos;histoire de la traite des esclaves"
+                placeholder="Découvrez l'histoire de la traite des esclaves"
                 value={form.subtitle}
                 onChange={(e) => update("subtitle", e.target.value)}
               />
@@ -182,20 +328,14 @@ export function CircuitForm({
                 onChange={(e) => update("descriptionEn", e.target.value)}
               />
               <TranslateButton
-                fields={{
-                  title: form.title,
-                  subtitle: form.subtitle,
-                  description: form.description,
-                }}
-                onTranslated={(texts) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    titleEn: texts.title ?? prev.titleEn,
-                    subtitleEn: texts.subtitle ?? prev.subtitleEn,
-                    descriptionEn: texts.description ?? prev.descriptionEn,
-                  }))
-                }
+                fields={translateFields()}
+                onTranslated={applyTranslations}
               />
+              <p className="text-xs text-gray-500">
+                Le bouton Traduire couvre tous les champs FR ci-dessus et
+                ci-dessous (points forts, programme, inclus / non inclus) —
+                envoyés par lots de 20 textes.
+              </p>
             </CardContent>
           </Card>
 
@@ -221,11 +361,17 @@ export function CircuitForm({
                 />
               </div>
               <Textarea
-                label="Programme détaillé (une ligne par jour, format « Titre : description »)"
+                label="Programme détaillé FR (une ligne par jour, format « Titre : description »)"
                 rows={8}
                 placeholder={"Jour 1 : Visite du musée d'histoire\nJour 2 : Départ pour Ganvié"}
                 value={form.itinerary}
                 onChange={(e) => update("itinerary", e.target.value)}
+              />
+              <Textarea
+                label="Programme détaillé EN (une ligne par jour, format « Title : description »)"
+                rows={8}
+                value={form.itineraryEn}
+                onChange={(e) => update("itineraryEn", e.target.value)}
               />
             </CardContent>
           </Card>
@@ -234,13 +380,19 @@ export function CircuitForm({
             <CardHeader>
               <CardTitle>Points forts</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Textarea
-                label="Points forts (un par ligne)"
+                label="Points forts FR (un par ligne)"
                 rows={4}
                 placeholder={"Visite du musée d'histoire\nMarché des fétiches\nPlage de Grand-Popo"}
                 value={form.highlights}
                 onChange={(e) => update("highlights", e.target.value)}
+              />
+              <Textarea
+                label="Points forts EN (un par ligne)"
+                rows={4}
+                value={form.highlightsEn}
+                onChange={(e) => update("highlightsEn", e.target.value)}
               />
             </CardContent>
           </Card>
@@ -251,18 +403,30 @@ export function CircuitForm({
             </CardHeader>
             <CardContent className="space-y-4">
               <Textarea
-                label="Services inclus (un par ligne)"
+                label="Services inclus FR (un par ligne)"
                 rows={4}
                 placeholder={"Transport climatisé\nGuide francophone\nHébergement"}
                 value={form.included}
                 onChange={(e) => update("included", e.target.value)}
               />
               <Textarea
-                label="Services non inclus (un par ligne)"
+                label="Services inclus EN (un par ligne)"
+                rows={4}
+                value={form.includedEn}
+                onChange={(e) => update("includedEn", e.target.value)}
+              />
+              <Textarea
+                label="Services non inclus FR (un par ligne)"
                 rows={4}
                 placeholder={"Billets d'avion\nAssurance voyage\nDépenses personnelles"}
                 value={form.excluded}
                 onChange={(e) => update("excluded", e.target.value)}
+              />
+              <Textarea
+                label="Services non inclus EN (un par ligne)"
+                rows={4}
+                value={form.excludedEn}
+                onChange={(e) => update("excludedEn", e.target.value)}
               />
             </CardContent>
           </Card>
@@ -279,12 +443,6 @@ export function CircuitForm({
                 options={[{ value: "", label: "Sélectionner" }, ...destinations]}
                 value={form.destinationId}
                 onChange={(e) => update("destinationId", e.target.value)}
-              />
-              <Select
-                label="Catégorie"
-                options={[{ value: "", label: "Sélectionner" }, ...categories]}
-                value={form.categoryId}
-                onChange={(e) => update("categoryId", e.target.value)}
               />
               <Input
                 label="Prix (FCFA) *"
@@ -325,6 +483,33 @@ export function CircuitForm({
                 value={form.imageUrl}
                 onChange={(e) => update("imageUrl", e.target.value)}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Catégories (plusieurs possibles)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {categories.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  Aucune catégorie — commencez par en créer une.
+                </p>
+              )}
+              {categories.map((category) => (
+                <label
+                  key={category.value}
+                  className="flex items-center gap-2 text-sm text-gray-700"
+                >
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={form.categoryIds.includes(category.value)}
+                    onChange={(e) => toggleCategory(category.value, e.target.checked)}
+                  />
+                  {category.label}
+                </label>
+              ))}
             </CardContent>
           </Card>
 

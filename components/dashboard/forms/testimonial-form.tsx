@@ -16,27 +16,56 @@ interface Option {
   label: string;
 }
 
-const EMPTY = {
-  name: "",
-  country: "",
-  rating: 5,
-  text: "",
-  textEn: "",
-  circuitId: "",
-  avatarUrl: "",
-  date: "",
-  isVerified: false,
-  isFeatured: false,
-  isActive: true,
-};
+/** Données de préremplissage en mode édition. */
+export interface TestimonialFormInitial {
+  id: string;
+  name: string;
+  country?: string | null;
+  rating?: number;
+  text?: string;
+  textEn?: string | null;
+  circuitId?: string | null;
+  avatarUrl?: string | null;
+  /** Date ISO sérialisée — seul YYYY-MM-DD alimente <input type="date">. */
+  date?: string | null;
+  isVerified?: boolean;
+  isFeatured?: boolean;
+  isActive?: boolean;
+}
 
-export function TestimonialForm({ circuits }: { circuits: Option[] }) {
+/** Préremplissage depuis un témoignage existant (ou formulaire vierge). */
+function toFormState(initial?: TestimonialFormInitial) {
+  return {
+    name: initial?.name ?? "",
+    country: initial?.country ?? "",
+    rating: initial?.rating ?? 5,
+    text: initial?.text ?? "",
+    textEn: initial?.textEn ?? "",
+    circuitId: initial?.circuitId ?? "",
+    avatarUrl: initial?.avatarUrl ?? "",
+    date: initial?.date ? initial.date.slice(0, 10) : "",
+    isVerified: initial?.isVerified ?? false,
+    isFeatured: initial?.isFeatured ?? false,
+    isActive: initial?.isActive ?? true,
+  };
+}
+
+type FormState = ReturnType<typeof toFormState>;
+
+export function TestimonialForm({
+  circuits,
+  initial,
+}: {
+  circuits: Option[];
+  initial?: TestimonialFormInitial;
+}) {
   const router = useRouter();
-  const [form, setForm] = useState(EMPTY);
+  const isEdit = Boolean(initial?.id);
+  const [form, setForm] = useState<FormState>(() => toFormState(initial));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function update<K extends keyof typeof EMPTY>(key: K, value: (typeof EMPTY)[K]) {
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -53,8 +82,12 @@ export function TestimonialForm({ circuits }: { circuits: Option[] }) {
     }
     setBusy(true);
     try {
-      const response = await fetch("/api/dashboard/testimonials", {
-        method: "POST",
+      const response = await fetch(
+        isEdit
+          ? `/api/dashboard/testimonials/${initial!.id}`
+          : "/api/dashboard/testimonials",
+        {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
@@ -69,7 +102,8 @@ export function TestimonialForm({ circuits }: { circuits: Option[] }) {
           isFeatured: form.isFeatured,
           isActive: form.isActive,
         }),
-      });
+        }
+      );
       if (!response.ok) {
         setError(await readApiError(response));
         return;
@@ -91,8 +125,14 @@ export function TestimonialForm({ circuits }: { circuits: Option[] }) {
             Retour
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Nouveau témoignage</h1>
-            <p className="text-gray-600 mt-1">Ajoutez un nouveau témoignage client</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isEdit ? "Modifier le témoignage" : "Nouveau témoignage"}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {isEdit
+                ? "Mettez à jour le témoignage client"
+                : "Ajoutez un nouveau témoignage client"}
+            </p>
           </div>
         </div>
         <Button type="submit" disabled={busy}>

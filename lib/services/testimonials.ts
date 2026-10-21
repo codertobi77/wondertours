@@ -41,6 +41,13 @@ export async function listTestimonials(
   return { items, total, page, pageSize };
 }
 
+/** Témoignage par id (dashboard — page d'édition). */
+export async function getTestimonialById(
+  id: string
+): Promise<Testimonial | null> {
+  return prisma.testimonial.findUnique({ where: { id } });
+}
+
 export type TestimonialCreateInput = Prisma.TestimonialUncheckedCreateInput;
 export type TestimonialUpdateInput = Prisma.TestimonialUncheckedUpdateInput;
 

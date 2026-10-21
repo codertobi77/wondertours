@@ -37,6 +37,11 @@ export async function listServices(
   return { items, total, page, pageSize };
 }
 
+/** Service par id (dashboard — page d'édition). */
+export async function getServiceById(id: string): Promise<Service | null> {
+  return prisma.service.findUnique({ where: { id } });
+}
+
 export type ServiceCreateInput = Prisma.ServiceUncheckedCreateInput;
 export type ServiceUpdateInput = Prisma.ServiceUncheckedUpdateInput;
 

@@ -65,7 +65,9 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 container mx-auto px-4 lg:px-8 pb-12">
           <div className="flex flex-wrap gap-3 mb-4">
-            <Badge variant="default">{circuit.category}</Badge>
+            {circuit.categories.map((category) => (
+              <Badge key={category} variant="default">{category}</Badge>
+            ))}
             <Badge variant="secondary">{circuit.destination}</Badge>
           </div>
           <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">

@@ -148,7 +148,6 @@ model Circuit {
   description     String?     @db.Text
   descriptionEn   String?     @map("description_en") @db.Text
   destinationId   String?     @map("destination_id") @db.Uuid
-  categoryId      String?     @map("category_id") @db.Uuid
   durationDays    Int?        @map("duration_days")
   durationNights  Int?        @map("duration_nights")
   price           Decimal     @db.Decimal(10, 2)
@@ -173,14 +172,13 @@ model Circuit {
   createdBy       String?     @map("created_by") @db.Uuid
 
   destination  Destination?  @relation(fields: [destinationId], references: [id], onDelete: SetNull)
-  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categories   Category[]
   author       User?         @relation(fields: [createdBy], references: [id], onDelete: SetNull)
   testimonials Testimonial[]
   bookings     Booking[]
 
   @@index([slug])
   @@index([destinationId])
-  @@index([categoryId])
   @@index([isActive])
   @@index([isFeatured])
   @@map("circuits")

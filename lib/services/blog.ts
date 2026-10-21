@@ -139,6 +139,13 @@ export async function listBlogCategories(
   return { items, total, page, pageSize };
 }
 
+/** Catégorie de blog par id (dashboard — page d'édition). */
+export async function getBlogCategoryById(
+  id: string
+): Promise<BlogCategory | null> {
+  return prisma.blogCategory.findUnique({ where: { id } });
+}
+
 export type BlogCategoryCreateInput = Prisma.BlogCategoryUncheckedCreateInput;
 export type BlogCategoryUpdateInput = Prisma.BlogCategoryUncheckedUpdateInput;
 

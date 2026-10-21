@@ -3,13 +3,20 @@ import { prisma } from "@/lib/db";
 import {
   listCircuits,
   getCircuitBySlug,
+  getCircuitById,
   createCircuit,
   updateCircuit,
   deleteCircuit,
 } from "@/lib/services/circuits";
+import {
+  createCategory,
+  deleteCategory,
+} from "@/lib/services/categories";
+import { slugify } from "@/lib/slug";
 import { uniquePrefix } from "./helpers";
 
 describe("circuits", () => {
+  // Timeout étendu : la base Aiven est distante (~300-500 ms par requête).
   test("CRUD complet + filtres", async () => {
     const title = uniquePrefix("Circuit");
     const price = 25000;
@@ -57,5 +64,63 @@ describe("circuits", () => {
     }
 
     expect(await prisma.circuit.findUnique({ where: { id: circuit.id } })).toBeNull();
-  });
+  }, 20000);
+
+  // Timeout étendu : ~14 allers-retours vers la base Aiven distante.
+  test(
+    "multi-catégories : connect, filtre categorySlug, set",
+    async () => {
+      const nameA = uniquePrefix("CatA");
+      const nameB = uniquePrefix("CatB");
+      const [categoryA, categoryB] = await Promise.all([
+        createCategory({ name: nameA, slug: slugify(nameA) }),
+        createCategory({ name: nameB, slug: slugify(nameB) }),
+      ]);
+      const title = uniquePrefix("Circuit");
+
+      // CREATE : relation m-n implicite (plusieurs catégories d'un coup)
+      const circuit = await createCircuit({
+        title,
+        slug: uniquePrefix("circuit"),
+        price: 15000,
+        currency: "XOF",
+        categories: { connect: [{ id: categoryA.id }, { id: categoryB.id }] },
+      });
+
+      try {
+        const created = await getCircuitById(circuit.id);
+        expect(created?.categories.map((c) => c.id).sort()).toEqual(
+          [categoryA.id, categoryB.id].sort()
+        );
+
+        // Filtre categorySlug (some) : le circuit matche chaque catégorie
+        expect(
+          (await listCircuits({ q: title, categorySlug: slugify(nameA) })).total
+        ).toBe(1);
+        expect(
+          (await listCircuits({ q: title, categorySlug: slugify(nameB) })).total
+        ).toBe(1);
+
+        // UPDATE set : remplace toutes les catégories
+        await updateCircuit(circuit.id, {
+          categories: { set: [{ id: categoryA.id }] },
+        });
+        const afterSet = await getCircuitById(circuit.id);
+        expect(afterSet?.categories.map((c) => c.id)).toEqual([categoryA.id]);
+
+        // set avec tableau vide : purge totale de la relation
+        await updateCircuit(circuit.id, { categories: { set: [] } });
+        const emptied = await getCircuitById(circuit.id);
+        expect(emptied?.categories).toHaveLength(0);
+        expect(
+          (await listCircuits({ q: title, categorySlug: slugify(nameA) })).total
+        ).toBe(0);
+      } finally {
+        await deleteCircuit(circuit.id);
+        await deleteCategory(categoryA.id);
+        await deleteCategory(categoryB.id);
+      }
+    },
+    20000
+  );
 });

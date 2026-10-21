@@ -88,6 +88,7 @@ export default async function DestinationsPage({
                 <RowActions
                   id={destination.id}
                   resource="destinations"
+                  editHref={`/dashboard/destinations/${destination.id}`}
                   enableDelete
                   deleteLabel="Supprimer la destination"
                   confirmMessage={`Supprimer la destination « ${destination.name} » ?`}

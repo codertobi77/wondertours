@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Check, Trash2, X, Clock, Archive, Eye, EyeOff } from "lucide-react";
+import { Check, Trash2, X, Clock, Archive, Eye, EyeOff, Pencil } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /** Formate la réponse d'erreur API {error, details?} en message lisible. */
@@ -24,15 +24,17 @@ async function readApiError(response: Response): Promise<string> {
 }
 
 /**
- * Actions par ligne des listes dashboard : changement de statut via PATCH
- * et suppression optionnelle via DELETE, suivis d'un router.refresh() pour
- * re-rendre les Server Components avec les données à jour.
+ * Actions par ligne des listes dashboard : lien d'édition optionnel,
+ * changement de statut via PATCH et suppression optionnelle via DELETE,
+ * suivis d'un router.refresh() pour re-rendre les Server Components avec
+ * les données à jour.
  */
 export function RowActions({
   id,
   resource,
   statusEndpoint,
   statuses,
+  editHref,
   enableDelete = false,
   deleteLabel = "Supprimer",
   confirmMessage = "Confirmer la suppression ?",
@@ -44,6 +46,8 @@ export function RowActions({
   statusEndpoint?: string;
   /** Statuts proposés ; PATCH { status } sur statusEndpoint ou resource/[id]. */
   statuses?: { value: string; label: string; icon?: LucideIcon; className?: string }[];
+  /** Lien vers la page d'édition [id] correspondante (bouton crayon). */
+  editHref?: string;
   /** Afficher le bouton de suppression (routes DELETE existantes uniquement). */
   enableDelete?: boolean;
   deleteLabel?: string;
@@ -110,6 +114,11 @@ export function RowActions({
           {status.icon && <status.icon className="w-4 h-4" />}
         </Button>
       ))}
+      {editHref && (
+        <Button variant="ghost" size="sm" href={editHref} title="Modifier">
+          <Pencil className="w-4 h-4" />
+        </Button>
+      )}
       {enableDelete && (
         <Button
           variant="ghost"

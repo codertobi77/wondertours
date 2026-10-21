@@ -118,8 +118,9 @@ async function main() {
     const destination = await prisma.destination.findUnique({
       where: { slug: slugify(circuit.destination) },
     });
-    const category = await prisma.category.findUnique({
-      where: { slug: slugify(circuit.category) },
+    // Un circuit peut appartenir à plusieurs catégories (relation m-n).
+    const categoryRows = await prisma.category.findMany({
+      where: { slug: { in: circuit.categories.map((name) => slugify(name)) } },
     });
     const durationDays = parseInt(circuit.duration, 10) || 1;
 
@@ -148,7 +149,9 @@ async function main() {
         included: circuit.included,
         excluded: circuit.excluded,
         destinationId: destination?.id,
-        categoryId: category?.id,
+        categories: categoryRows.length
+          ? { connect: categoryRows.map((c) => ({ id: c.id })) }
+          : undefined,
       },
     });
   }

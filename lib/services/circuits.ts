@@ -2,7 +2,7 @@ import { prisma, Prisma, type Circuit } from "@/lib/db";
 
 // Types exposés
 export type CircuitWithRelations = Prisma.CircuitGetPayload<{
-  include: { destination: true; category: true };
+  include: { destination: true; categories: true };
 }>;
 
 export interface CircuitListFilters {
@@ -37,7 +37,9 @@ export async function listCircuits(filters: CircuitListFilters = {}): Promise<{
     ...(filters.destinationSlug && {
       destination: { slug: filters.destinationSlug },
     }),
-    ...(filters.categorySlug && { category: { slug: filters.categorySlug } }),
+    ...(filters.categorySlug && {
+      categories: { some: { slug: filters.categorySlug } },
+    }),
     ...(filters.q && {
       OR: [
         { title: { contains: filters.q, mode: "insensitive" } },
@@ -55,7 +57,7 @@ export async function listCircuits(filters: CircuitListFilters = {}): Promise<{
   const [items, total] = await prisma.$transaction([
     prisma.circuit.findMany({
       where,
-      include: { destination: true, category: true },
+      include: { destination: true, categories: true },
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -73,7 +75,7 @@ export async function getCircuitBySlug(
 ): Promise<CircuitWithRelations | null> {
   return prisma.circuit.findFirst({
     where: { slug, ...(includeInactive ? {} : { isActive: true }) },
-    include: { destination: true, category: true },
+    include: { destination: true, categories: true },
   });
 }
 
@@ -83,7 +85,7 @@ export async function getCircuitById(
 ): Promise<CircuitWithRelations | null> {
   return prisma.circuit.findUnique({
     where: { id },
-    include: { destination: true, category: true },
+    include: { destination: true, categories: true },
   });
 }
 

@@ -44,7 +44,10 @@ export async function POST(request: Request) {
       description: body.description ?? null,
       descriptionEn: body.descriptionEn ?? null,
       destinationId: body.destinationId ?? null,
-      categoryId: body.categoryId ?? null,
+      // Multi-catégories : connecter chaque catégorie sélectionnée.
+      categories: body.categoryIds?.length
+        ? { connect: body.categoryIds.map((categoryId) => ({ id: categoryId })) }
+        : undefined,
       durationDays: body.durationDays ?? null,
       durationNights: body.durationNights ?? null,
       price: body.price,
@@ -52,9 +55,13 @@ export async function POST(request: Request) {
       imageUrl: body.imageUrl ?? null,
       gallery: json(body.gallery),
       highlights: json(body.highlights),
+      highlightsEn: json(body.highlightsEn),
       itinerary: json(body.itinerary),
+      itineraryEn: json(body.itineraryEn),
       included: json(body.included),
+      includedEn: json(body.includedEn),
       excluded: json(body.excluded),
+      excludedEn: json(body.excludedEn),
       difficulty: body.difficulty ?? null,
       minParticipants: body.minParticipants ?? null,
       maxParticipants: body.maxParticipants ?? null,

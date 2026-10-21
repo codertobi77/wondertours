@@ -85,6 +85,11 @@ describe("users", () => {
 
 describe("media", () => {
   test("upload → liste → suppression (fichier + ligne)", async () => {
+    // Ce test attend le stockage local : neutraliser imgBB même si
+    // IMGBB_API_KEY est définie dans le .env local (env. de dev).
+    const previousImgbbKey = process.env.IMGBB_API_KEY;
+    delete process.env.IMGBB_API_KEY;
+
     const bytes = new Uint8Array([
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // signature PNG
       0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, // IHDR
@@ -106,6 +111,9 @@ describe("media", () => {
       await fs.access(media.storagePath);
     } finally {
       await deleteMediaFile(media.id);
+      if (previousImgbbKey !== undefined) {
+        process.env.IMGBB_API_KEY = previousImgbbKey;
+      }
     }
 
     // Fichier + ligne supprimés

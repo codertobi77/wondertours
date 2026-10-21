@@ -17,27 +17,55 @@ interface Option {
   label: string;
 }
 
-const EMPTY = {
-  title: "",
-  titleEn: "",
-  excerpt: "",
-  excerptEn: "",
-  content: "",
-  contentEn: "",
-  categoryId: "",
-  imageUrl: "",
-  tags: "",
-  readTime: "",
-  isFeatured: false,
-};
+/** Données de préremplissage en mode édition. */
+export interface BlogPostFormInitial {
+  id: string;
+  title: string;
+  titleEn?: string | null;
+  excerpt?: string | null;
+  excerptEn?: string | null;
+  content?: string | null;
+  contentEn?: string | null;
+  categoryId?: string | null;
+  imageUrl?: string | null;
+  tags?: string[];
+  readTime?: number | null;
+  isFeatured?: boolean;
+}
 
-export function BlogPostForm({ categories }: { categories: Option[] }) {
+/** Préremplissage depuis un article existant (ou formulaire vierge). */
+function toFormState(initial?: BlogPostFormInitial) {
+  return {
+    title: initial?.title ?? "",
+    titleEn: initial?.titleEn ?? "",
+    excerpt: initial?.excerpt ?? "",
+    excerptEn: initial?.excerptEn ?? "",
+    content: initial?.content ?? "",
+    contentEn: initial?.contentEn ?? "",
+    categoryId: initial?.categoryId ?? "",
+    imageUrl: initial?.imageUrl ?? "",
+    tags: initial?.tags ? initial.tags.join(", ") : "",
+    readTime: initial?.readTime != null ? String(initial.readTime) : "",
+    isFeatured: initial?.isFeatured ?? false,
+  };
+}
+
+type FormState = ReturnType<typeof toFormState>;
+
+export function BlogPostForm({
+  categories,
+  initial,
+}: {
+  categories: Option[];
+  initial?: BlogPostFormInitial;
+}) {
   const router = useRouter();
-  const [form, setForm] = useState(EMPTY);
+  const isEdit = Boolean(initial?.id);
+  const [form, setForm] = useState<FormState>(() => toFormState(initial));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function update<K extends keyof typeof EMPTY>(key: K, value: (typeof EMPTY)[K]) {
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -53,8 +81,10 @@ export function BlogPostForm({ categories }: { categories: Option[] }) {
     }
     setBusy(true);
     try {
-      const response = await fetch("/api/dashboard/blog", {
-        method: "POST",
+      const response = await fetch(
+        isEdit ? `/api/dashboard/blog/${initial!.id}` : "/api/dashboard/blog",
+        {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: form.title,
@@ -70,7 +100,8 @@ export function BlogPostForm({ categories }: { categories: Option[] }) {
           isFeatured: form.isFeatured,
           isPublished,
         }),
-      });
+        }
+      );
       if (!response.ok) {
         setError(await readApiError(response));
         return;
@@ -97,8 +128,14 @@ export function BlogPostForm({ categories }: { categories: Option[] }) {
             Retour
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Nouvel article</h1>
-            <p className="text-gray-600 mt-1">Créez un nouvel article de blog</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isEdit ? "Modifier l'article" : "Nouvel article"}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {isEdit
+                ? "Mettez à jour l'article de blog"
+                : "Créez un nouvel article de blog"}
+            </p>
           </div>
         </div>
         <div className="flex gap-3">

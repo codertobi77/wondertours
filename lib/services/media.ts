@@ -142,6 +142,21 @@ export async function uploadMedia(input: UploadMediaInput): Promise<MediaFile> {
   });
 }
 
+// ─────────────────────────────── Mise à jour ───────────────────────────────
+
+export interface UpdateMediaInput {
+  altText?: string | null;
+  altTextEn?: string | null;
+}
+
+/** Met à jour les textes alternatifs (FR/EN) d'un média existant. */
+export async function updateMediaFile(
+  id: string,
+  data: UpdateMediaInput
+): Promise<MediaFile> {
+  return prisma.mediaFile.update({ where: { id }, data });
+}
+
 // ─────────────────────────────── Suppression ───────────────────────────────
 
 /** Supprime la ligne en base et le fichier physique (si existant). */

@@ -37,6 +37,16 @@ export const dateQuery = z
 
 export const difficultySchema = z.enum(["easy", "moderate", "challenging"]);
 
+/** Liste de chaînes non vides (highlights, included, excluded…). */
+const stringListSchema = z.array(z.string().trim().min(1).max(500));
+
+/** Journée d'itinéraire (programme jour par jour). */
+const itineraryDaySchema = z.object({
+  day: z.coerce.number().int().min(1),
+  title: z.string().trim().min(1).max(255),
+  description: z.string().trim().max(5000).optional().nullable(),
+});
+
 export const circuitCreateSchema = z.object({
   title: z.string().trim().min(3).max(255),
   titleEn: z.string().trim().max(255).optional().nullable(),
@@ -45,26 +55,22 @@ export const circuitCreateSchema = z.object({
   description: z.string().trim().max(10000).optional().nullable(),
   descriptionEn: z.string().trim().max(10000).optional().nullable(),
   destinationId: z.string().uuid().optional().nullable(),
-  categoryId: z.string().uuid().optional().nullable(),
+  // Multi-catégories (relation m-n) : ids des catégories du circuit.
+  categoryIds: z.array(z.string().uuid()).max(10).optional().nullable(),
   durationDays: z.coerce.number().int().min(1).max(365).optional().nullable(),
   durationNights: z.coerce.number().int().min(0).max(364).optional().nullable(),
   price: z.coerce.number().min(0),
   currency: z.string().trim().length(3).default("XOF"),
   imageUrl: z.string().trim().max(500).optional().nullable(),
   gallery: z.array(z.string().trim().min(1).max(500)).optional().nullable(),
-  highlights: z.array(z.string().trim().min(1).max(500)).optional().nullable(),
-  itinerary: z
-    .array(
-      z.object({
-        day: z.coerce.number().int().min(1),
-        title: z.string().trim().min(1).max(255),
-        description: z.string().trim().max(5000).optional().nullable(),
-      })
-    )
-    .optional()
-    .nullable(),
-  included: z.array(z.string().trim().min(1).max(500)).optional().nullable(),
-  excluded: z.array(z.string().trim().min(1).max(500)).optional().nullable(),
+  highlights: stringListSchema.optional().nullable(),
+  highlightsEn: stringListSchema.optional().nullable(),
+  itinerary: z.array(itineraryDaySchema).optional().nullable(),
+  itineraryEn: z.array(itineraryDaySchema).optional().nullable(),
+  included: stringListSchema.optional().nullable(),
+  includedEn: stringListSchema.optional().nullable(),
+  excluded: stringListSchema.optional().nullable(),
+  excludedEn: stringListSchema.optional().nullable(),
   difficulty: difficultySchema.optional().nullable(),
   minParticipants: z.coerce.number().int().min(1).max(1000).optional().nullable(),
   maxParticipants: z.coerce.number().int().min(1).max(1000).optional().nullable(),

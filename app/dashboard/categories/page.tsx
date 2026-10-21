@@ -81,6 +81,7 @@ export default async function CategoriesPage() {
                 <RowActions
                   id={category.id}
                   resource="categories"
+                  editHref={`/dashboard/categories/${category.id}`}
                   enableDelete
                   deleteLabel="Supprimer la catégorie"
                   confirmMessage={`Supprimer la catégorie « ${category.name} » ?`}

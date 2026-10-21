@@ -20,7 +20,7 @@ Base locale : `http://localhost:3000`. Toutes les réponses sont en JSON.
 ### Circuits
 
 #### `GET /api/circuits`
-Liste paginée des circuits actifs (relations `destination` et `category` incluses).
+Liste paginée des circuits actifs (relations `destination` et `categories` incluses — plusieurs catégories par circuit).
 
 Query params (tous optionnels) :
 | Param | Type | Description |
@@ -28,14 +28,14 @@ Query params (tous optionnels) :
 | `page`, `pageSize` | int | Pagination |
 | `q` | string | Recherche titre/description |
 | `destination` | string | Slug de destination |
-| `category` | string | Slug de catégorie |
+| `category` | string | Slug de catégorie (matche l'une des catégories du circuit) |
 | `featured` | `true`/`false` | Circuits à la une |
 | `maxPrice` | number | Prix maximum (XOF) |
 | `maxDuration` | number | Durée maximum (jours) |
 
 ```json
 {
-  "items": [{ "id": "uuid", "slug": "…", "title": "…", "price": 45000, "destination": {…}, "category": {…} }],
+  "items": [{ "id": "uuid", "slug": "…", "title": "…", "price": 45000, "destination": {…}, "categories": [{…}, …] }],
   "total": 6, "page": 1, "pageSize": 20
 }
 ```
@@ -166,25 +166,29 @@ Codes : `201` à la création, `404` si l'id n'existe pas, `409` si contrainte d
 {
   "title": "Titre (3 min)",
   "titleEn": "optionnel",
-  "subtitle": "optionnel",
-  "description": "optionnel",
+  "subtitle": "optionnel", "subtitleEn": "optionnel",
+  "description": "optionnel", "descriptionEn": "optionnel",
   "destinationId": "uuid optionnel",
-  "categoryId": "uuid optionnel",
+  "categoryIds": ["uuid catégorie", "…"],
   "durationDays": 2,
   "durationNights": 1,
   "price": 65000,
   "currency": "XOF (défaut)",
   "imageUrl": "optionnel",
   "gallery": ["url…"],
-  "highlights": ["point fort…"],
+  "highlights": ["point fort…"], "highlightsEn": ["…"],
   "itinerary": [{ "day": 1, "title": "Arrivée", "description": "…" }],
-  "included": ["…"], "excluded": ["…"],
+  "itineraryEn": [{…}],
+  "included": ["…"], "includedEn": ["…"],
+  "excluded": ["…"], "excludedEn": ["…"],
   "difficulty": "easy|moderate|challenging",
   "minParticipants": 1, "maxParticipants": 12,
   "isFeatured": false, "isActive": true
 }
 ```
 `price` est obligatoire. Champs non envoyés = défauts ; en `PATCH`, seuls les champs fournis sont modifiés.
+
+**Catégories multiples** : `categoryIds` (max 10 UUID) remplace l'ancien `categoryId` unique. `POST` connecte les catégories listées ; en `PATCH`, `categoryIds` **remplace** l'ensemble (tableau vide = retire toutes les catégories).
 
 #### Corps de création — destination
 ```json
@@ -252,12 +256,13 @@ Clés de contenu : `founder_bio_fr` / `founder_bio_en` — biographie du fondate
 * `POST /api/dashboard/media` — `multipart/form-data` : `file` (image, 5 Mo max), `altText`, `altTextEn` optionnels. Réponse `201` avec `url` et `storagePath` :
   * **imgBB activé** (`IMGBB_API_KEY` définie, recommandé en production) : le fichier est hébergé sur imgBB — `url` est l'URL distante (`https://i.ibb.co/…`), `storagePath` conserve le `delete_url` imgBB. Erreur imgBB (clé invalide, réseau…) → `500` avec le message.
   * **sinon** : stockage local — `url` = `/uploads/<timestamp>-<nom>`, fichier écrit sous `public/uploads/` (non persistant sur Vercel).
+* `PATCH /api/dashboard/media/[id]` — édition des textes alternatifs : `{ "altText": "…", "altTextEn": "…" }` (champs optionnels, 255 max, `null` autorisé). Édition inline depuis la médiathèque.
 * `DELETE /api/dashboard/media/[id]` — supprime la ligne ; le fichier physique n'est supprimé qu'en mode local (imgBB n'a pas d'API de suppression : l'image distante reste, le `delete_url` conservé en base permet une suppression manuelle).
 
 ### Traduction (DeepL)
 
 #### `POST /api/dashboard/translate`
-Traduit en lot des textes du dashboard (bouton « Traduire en anglais » des formulaires circuit, article blog et témoignage). **Admin + éditeur** ; `503` si `DEEPL_API_KEY` n'est pas configurée.
+Traduit en lot des textes du dashboard (bouton « Traduire » des formulaires circuit, article blog, témoignage, catégorie, catégorie blog, destination et service). **Admin + éditeur** ; `503` si `DEEPL_API_KEY` n'est pas configurée.
 
 ```json
 {
@@ -266,7 +271,7 @@ Traduit en lot des textes du dashboard (bouton « Traduire en anglais » des for
   "targetLocale": "en"
 }
 ```
-* `texts` : 1 à 20 entrées `clé → texte` — clés libres (noms de champs), valeurs de 1 à 100 000 caractères ;
+* `texts` : 1 à 20 entrées `clé → texte` — clés libres (noms de champs), valeurs de 1 à 100 000 caractères. Le bouton « Traduire » du formulaire circuit (tous les champs FR, points forts et programme inclus) découpe automatiquement en requêtes séquentielles de ≤ 20 textes ;
 * `sourceLocale` optionnel (`fr`/`en`, auto-détection sinon), `targetLocale` requis (`fr`/`en` — l'anglais cible est envoyé à DeepL comme `en-US`).
 
 Réponse `200` :

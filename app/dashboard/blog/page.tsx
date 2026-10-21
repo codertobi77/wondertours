@@ -122,6 +122,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                       <RowActions
                         id={post.id}
                         resource="blog"
+                        editHref={`/dashboard/blog/${post.id}`}
                         enableDelete
                         deleteLabel="Supprimer l'article"
                         confirmMessage={`Supprimer l'article « ${post.title} » ?`}

@@ -36,7 +36,6 @@ Gestion des circuits touristiques.
 | description | TEXT | Description complète |
 | description_en | TEXT | Description en anglais |
 | destination_id | UUID (FK) | Destination (réf: destinations) |
-| category_id | UUID (FK) | Catégorie (réf: categories) |
 | duration_days | INTEGER | Durée en jours |
 | duration_nights | INTEGER | Durée en nuits |
 | price | DECIMAL(10,2) | Prix par personne |
@@ -44,9 +43,13 @@ Gestion des circuits touristiques.
 | image_url | VARCHAR(500) | URL de l'image principale |
 | gallery | JSONB | Tableau d'URLs d'images |
 | highlights | JSONB | Points forts (tableau de strings) |
+| highlights_en | JSONB | Points forts en anglais |
 | itinerary | JSONB | Programme détaillé (jours/étapes) |
+| itinerary_en | JSONB | Programme détaillé en anglais |
 | included | JSONB | Services inclus |
+| included_en | JSONB | Services inclus en anglais |
 | excluded | JSONB | Services non inclus |
+| excluded_en | JSONB | Services non inclus en anglais |
 | difficulty | ENUM('easy', 'moderate', 'challenging') | Niveau de difficulté |
 | min_participants | INTEGER | Nombre minimum de participants |
 | max_participants | INTEGER | Nombre maximum de participants |
@@ -55,6 +58,8 @@ Gestion des circuits touristiques.
 | created_at | TIMESTAMP | Date de création |
 | updated_at | TIMESTAMP | Date de mise à jour |
 | created_by | UUID (FK) | Créateur (réf: users) |
+
+**Catégories multiples** : un circuit appartient à 0..N catégories via la table de jointure implicite `_CategoryToCircuit` (`A` = category_id, `B` = circuit_id, clé primaire `(A, B)`, `ON DELETE CASCADE` des deux côtés). L'ancienne colonne unique `category_id` a été supprimée (les affectations existantes ont été reprises dans la jointure).
 
 ---
 
@@ -283,7 +288,7 @@ users (1) ──< (N) circuits (created_by)
 users (1) ──< (N) blog_posts (author)
 
 destinations (1) ──< (N) circuits
-categories (1) ──< (N) circuits
+categories (N) ──< (M) circuits   (via _CategoryToCircuit)
 circuits (1) ──< (N) testimonials
 circuits (1) ──< (N) bookings
 
@@ -300,9 +305,11 @@ users (1) ──< (N) media_library (uploaded_by)
 -- Circuits
 CREATE INDEX idx_circuits_slug ON circuits(slug);
 CREATE INDEX idx_circuits_destination ON circuits(destination_id);
-CREATE INDEX idx_circuits_category ON circuits(category_id);
 CREATE INDEX idx_circuits_active ON circuits(is_active);
 CREATE INDEX idx_circuits_featured ON circuits(is_featured);
+
+-- Jointure m-n circuits ↔ categories (_CategoryToCircuit)
+CREATE INDEX idx_category_to_circuit_b ON "_CategoryToCircuit"("B");
 
 -- Blog posts
 CREATE INDEX idx_blog_posts_slug ON blog_posts(slug);

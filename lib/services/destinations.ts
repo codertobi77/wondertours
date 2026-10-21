@@ -43,6 +43,11 @@ export async function getDestinationBySlug(
   return prisma.destination.findFirst({ where: { slug, isActive: true } });
 }
 
+/** Destination par id (dashboard — page d'édition). */
+export async function getDestinationById(id: string): Promise<Destination | null> {
+  return prisma.destination.findUnique({ where: { id } });
+}
+
 export type DestinationCreateInput = Prisma.DestinationUncheckedCreateInput;
 export type DestinationUpdateInput = Prisma.DestinationUncheckedUpdateInput;
 

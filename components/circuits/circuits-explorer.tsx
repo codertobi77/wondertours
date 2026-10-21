@@ -34,7 +34,7 @@ export function CircuitsExplorer({
   const [selectedDestination, setSelectedDestination] = useState<string>("all");
 
   const filteredCircuits = circuits.filter((circuit) => {
-    if (selectedCategory !== "all" && circuit.category !== selectedCategory) {
+    if (selectedCategory !== "all" && !circuit.categories.includes(selectedCategory)) {
       return false;
     }
     if (selectedDestination !== "all" && circuit.destination !== selectedDestination) {

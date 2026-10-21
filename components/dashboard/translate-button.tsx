@@ -5,10 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Languages } from "lucide-react";
 import { readApiError } from "@/components/dashboard/api-error";
 
+/** L'API /api/dashboard/translate accepte 20 textes maximum par requête. */
+const MAX_TEXTS_PER_REQUEST = 20;
+
 /**
  * Bouton « Traduire en anglais » des formulaires du dashboard : envoie les
  * champs FR au route handler protégé /api/dashboard/translate (DeepL) puis
  * remplit les champs EN via le callback `onTranslated`.
+ *
+ * Au-delà de 20 textes, les entrées sont envoyées en plusieurs requêtes
+ * séquentielles (lots de 20) puis fusionnées en tout-ou-rien : si un lot
+ * échoue, aucune traduction n'est appliquée.
  *
  * Sans DEEPL_API_KEY côté serveur, l'API répond 503 et le message s'affiche
  * sous le bouton (aucune traduction silencieuse).
@@ -27,10 +34,10 @@ export function TranslateButton({
   const [error, setError] = useState<string | null>(null);
 
   async function handleTranslate() {
-    const texts = Object.fromEntries(
-      Object.entries(fields).filter(([, value]) => value.trim().length > 0)
+    const entries = Object.entries(fields).filter(
+      ([, value]) => value.trim().length > 0
     );
-    if (Object.keys(texts).length === 0) {
+    if (entries.length === 0) {
       setError("Remplissez d'abord les champs français à traduire.");
       return;
     }
@@ -38,19 +45,28 @@ export function TranslateButton({
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/dashboard/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texts, targetLocale: "en" }),
-      });
-      if (!response.ok) {
-        setError(await readApiError(response));
-        return;
+      const merged: Record<string, string> = {};
+      // Requêtes séquentielles de ≤20 textes (limite de l'API), fusionnées
+      // en fin de parcours — échec d'un lot = rien n'est appliqué.
+      for (let i = 0; i < entries.length; i += MAX_TEXTS_PER_REQUEST) {
+        const chunk = Object.fromEntries(
+          entries.slice(i, i + MAX_TEXTS_PER_REQUEST)
+        );
+        const response = await fetch("/api/dashboard/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texts: chunk, targetLocale: "en" }),
+        });
+        if (!response.ok) {
+          setError(await readApiError(response));
+          return;
+        }
+        const data = (await response.json()) as {
+          texts: Record<string, string>;
+        };
+        Object.assign(merged, data.texts);
       }
-      const data = (await response.json()) as {
-        texts: Record<string, string>;
-      };
-      onTranslated(data.texts);
+      onTranslated(merged);
     } catch {
       setError("Erreur réseau");
     } finally {
