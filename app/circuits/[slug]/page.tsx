@@ -20,7 +20,12 @@ interface CircuitPageProps {
 export const dynamicParams = false;
 
 export async function generateStaticParams() {
-  return (await getCircuitSlugs()).map((slug) => ({ slug }));
+  const slugs = await getCircuitSlugs();
+  // Export statique : Next refuse un tableau vide (au moins une route
+  // générée). Sentinelle "_" si le contenu est indisponible au build
+  // (CI sans APP_URL, API coupée) : la page rend alors not-found, aucun
+  // contenu fictif n'est pas publié.
+  return slugs.length > 0 ? slugs.map((slug) => ({ slug })) : [{ slug: "_" }];
 }
 
 export async function generateMetadata({

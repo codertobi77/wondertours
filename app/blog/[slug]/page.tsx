@@ -21,7 +21,12 @@ interface BlogPostPageProps {
 export const dynamicParams = false;
 
 export async function generateStaticParams() {
-  return (await getBlogSlugs()).map((slug) => ({ slug }));
+  const slugs = await getBlogSlugs();
+  // Export statique : Next refuse un tableau vide (au moins une route
+  // générée). Sentinelle "_" si le contenu est indisponible au build
+  // (CI sans APP_URL, API coupée) : la page rend alors not-found, aucun
+  // contenu fictif n'est pas publié.
+  return slugs.length > 0 ? slugs.map((slug) => ({ slug })) : [{ slug: "_" }];
 }
 
 export async function generateMetadata({

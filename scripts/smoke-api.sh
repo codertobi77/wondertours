@@ -47,10 +47,24 @@ check_json() {
   check "$label" "$expected" "$actual"
 }
 
+# env_value <CLÉ> — valeur du .env, guillemets encadrants retirés
+# (convention dotenv, cf. gen-config-local.php : sans ce retrait, le
+# DATABASE_URL quoté du .env rendait le psql de cleanup invalide —
+# échec silencieux, lignes de test jamais supprimées).
+env_value() {
+  local v
+  v=$(grep -E "^$1=" "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
+  case $v in
+    '"'*'"') v=${v#?}; v=${v%?} ;;
+    "'"*"'"  ) v=${v#?}; v=${v%?} ;;
+  esac
+  printf '%s' "$v"
+}
+
 cleanup() {
   set +e
   if [ -n "$BOOKING_ID" ] || [ -n "$CONTACT_ID" ] || [ -n "$SMOKE_USER_EMAIL" ]; then
-    DB_URL=$(grep -E '^DATABASE_URL=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
+    DB_URL=$(env_value DATABASE_URL)
     if [ -n "$DB_URL" ]; then
       [ -n "$BOOKING_ID" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM bookings WHERE id='$BOOKING_ID';" >/dev/null 2>&1
       [ -n "$CONTACT_ID" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM contact_requests WHERE id='$CONTACT_ID';" >/dev/null 2>&1
@@ -113,10 +127,10 @@ check "POST /api/bookings circuit inconnu" 400 "$(curl -s -o /dev/null -w '%{htt
 
 # ───────────────────── Authentification ─────────────────────
 # Comptes créés par le seed (bun run db:seed) depuis le .env.
-ADMIN_EMAIL=$(grep -E '^ADMIN_EMAIL=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
-ADMIN_PASSWORD=$(grep -E '^ADMIN_PASSWORD=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
-EDITOR_EMAIL=$(grep -E '^EDITOR_EMAIL=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
-EDITOR_PASSWORD=$(grep -E '^EDITOR_PASSWORD=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
+ADMIN_EMAIL=$(env_value ADMIN_EMAIL)
+ADMIN_PASSWORD=$(env_value ADMIN_PASSWORD)
+EDITOR_EMAIL=$(env_value EDITOR_EMAIL)
+EDITOR_PASSWORD=$(env_value EDITOR_PASSWORD)
 
 if [ -z "${SMOKE_API_ONLY:-}" ]; then
   check "GET /dashboard sans session → redirection login" 307 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard")"
