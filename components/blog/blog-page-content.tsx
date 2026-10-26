@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
 import { BlogGrid } from "@/components/blog/blog-grid";
@@ -15,23 +16,25 @@ interface BlogCategoryVM {
 }
 
 interface BlogPageContentProps {
-  categorySlug: string;
   categories: BlogCategoryVM[];
+  /** Tous les articles publiés (categorySlug embarqué pour le filtre). */
   posts: BlogPost[];
 }
 
 /**
- * Corps bilingue de la page Blog (catégories, articles, newsletter). Le
- * rendu serveur ne peut pas lire la locale (contexte client) : la page
- * serveur garde le fetch des données et délègue l'affichage ici.
+ * Corps bilingue de la page Blog. La page est statique : le filtre
+ * ?categorie=<slug> s'applique ici, côté client, sur la liste complète.
+ * useSearchParams exige une <Suspense> au-dessus — fournie par la page.
  */
-export function BlogPageContent({
-  categorySlug,
-  categories,
-  posts,
-}: BlogPageContentProps) {
+export function BlogPageContent({ categories, posts }: BlogPageContentProps) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
+  const searchParams = useSearchParams();
+  const categorySlug = searchParams.get("categorie") ?? "";
+
+  const filteredPosts = categorySlug
+    ? posts.filter((post) => post.categorySlug === categorySlug)
+    : posts;
 
   return (
     <>
@@ -74,7 +77,7 @@ export function BlogPageContent({
           <SectionHeading
             title={isFr ? "Derniers articles" : "Latest articles"}
           />
-          <BlogGrid posts={posts} />
+          <BlogGrid posts={filteredPosts} />
         </div>
       </section>
 

@@ -1,147 +1,162 @@
-# Déploiement LWS (hébergement mutualisé cPanel / Passenger)
+# Déploiement LWS (mutualisé Perso — frontend statique + API PHP)
 
-Procédure de déploiement du site Wonder Tours sur un hébergement **LWS cPanel mutualisé**, où Node.js s'exécute via **Phusion Passenger** (Apache).
+Procédure de déploiement du site Wonder Tours sur l'hébergement **LWS formule Perso**. Cette offre n'expose ni SSH ni Node.js : le site y tourne donc sous la forme **d'un frontend statique servi par Apache + une API PHP zéro dépendance**, avec la base **PostgreSQL Aiven** distante (TLS).
 
-**Stratégie** : le mutualisé interdit PM2/ports dédiés et un `npm install` serveur risque d'être tué par les limites CPU/RAM. On construit donc **localement (ou en CI) un bundle autonome** `output: "standalone"` — `node_modules` minimal, client Prisma compilé, assets inclus — qu'on uploaye et extrait tel quel. **Aucun build ni installation sur le serveur.**
+**Stratégie** : `next build` produit un export statique (`out/`, config `output: "export"`) déposé dans `public_html/` ; l'API REST est servie same-origin sous `/api/*` par `php-api/` (PDO PostgreSQL, front controller + `.htaccess`, aucun Composer). Le tout est déployé par FTP (lftp) depuis GitHub Actions — **aucun build ni installation sur le serveur**.
 
-L'existant Vercel + Aiven continue de fonctionner en parallèle : le premier déploiement LWS pointe sur la base **Aiven** (zéro migration), la bascule vers le PostgreSQL local LWS est documentée en §9.
+L'hébergement Vercel historique continue de fonctionner en parallèle et reste le **repli** tant que le DNS n'est pas basculé (cf. §7).
 
-## Vue d'ensemble du fonctionnement
+## Vue d'ensemble de l'architecture
 
-- `next.config.ts` active `output: "standalone"` → `next build` produit `.next/standalone/` avec un `server.js` minimal.
-- `server.js` écoute sur `process.env.PORT` (fourni par Passenger) et lie `process.env.HOSTNAME` (défaut `0.0.0.0`).
-- Passenger démarre le processus au premier hit et le garde en vie ; le redémarrage se fait depuis cPanel (« Setup Node.js App » → *Restart*).
-- Le bundle **ne contient aucun `.env`** (purge au packaging, cf. `scripts/package-lws.sh`) : les secrets vivent dans les variables d'environnement cPanel.
-- Le client Prisma est **compilé dans les chunks serveur** (`.next/server/chunks`, WASM inclus) — vérifié par le smoke test du script de packaging.
-
-## 1. Construire le bundle
-
-**Localement** (valide l'exact bundle avant upload — `--smoke` démarre `server.js` en local et vérifie `/a-propos` + `/api/circuits`) :
-
-```bash
-bash scripts/package-lws.sh --smoke
+```
+public_html/
+├── .htaccess            URLs propres + sentinelle dashboard + 404 (public/.htaccess)
+├── index.html, a-propos/, circuits/, blog/, …   ← export statique Next.js (out/)
+├── 404.html             page not-found de l'export
+├── api/                 ← php-api/ (API REST)
+│   ├── .htaccess        RewriteBase /api/ → index.php (front controller)
+│   ├── index.php        routeur : dispatch vers handlers/
+│   ├── handlers/        AuthApi, PublicApi, DashboardApi, Crud… (39 routes)
+│   ├── lib/             Db (PDO), Auth/JWT, Validator, Env, External (Resend/DeepL/imgBB)
+│   └── config.local.php secrets du serveur (généré par la CI, jamais commité)
+└── uploads/             médiathèque locale (si IMGBB_API_KEY absente)
 ```
 
-Résultat : `dist-lws/wondertours-standalone-<rev>-<date>.tar.gz` (~83 Mo, images de `public/` incluses ; `dist-lws/` est gitignoré).
+- **Base de données** : PostgreSQL **Aiven** (`sslmode=require`) — vérifié sur l'offre réelle : `pdo_pgsql` disponible et sortie TCP vers Aiven (port 12733) ouverte (test `php-api/test-connexion.php`). Le schéma reste géré par **Prisma** (`prisma migrate deploy` en CI) ; le PHP ne fait aucune migration.
+- **Sessions** : JWT HS256 dans le cookie `wt_session`, signé avec le même `AUTH_SECRET` que la stack Next/Vercel — les sessions sont interchangeables entre les deux stacks.
+- **Config serveur** : `php-api/config.local.php` (perms 600, gitignoré), généré depuis les secrets GitHub à chaque déploiement et uploadé par FTP. Ordre de résolution (cf. `php-api/lib/Env.php`) : `config.local.php` → variable d'environnement → défauts intégrés.
 
-**Ou via GitHub Actions** (recommandé — §8) : l'artefact `wondertours-lws-bundle` de la run « Package LWS », ou la pièce jointe d'une Release tag `lws-v*`.
+## 1. Mise en place initiale (une seule fois)
 
-## 2. Créer l'application Node.js dans cPanel
+### 1.1 PHP
 
-cPanel → **Setup Node.js App** → *Create Application* :
+Sélectionner **PHP 8.1 minimum** (8.3 recommandé — le code utilise des types de retour `never`) dans LWS Panel. Vérifications ponctuelles possibles avec `php-api/test-connexion.php` : l'uploader via le gestionnaire de fichiers, l'ouvrir dans le navigateur (affiche version PHP, `pdo_pgsql`, ping TCP et requête SQL vers Aiven), puis **le supprimer**.
 
-| Champ | Valeur |
-|-------|-------|
-| Node.js version | **22.x (LTS)** — Next 16 requiert Node ≥ 20.9 |
-| Application mode | **Production** |
-| Application root | `wondertours` (créé hors `public_html`, ex. `~/wondertours`) |
-| Application URL | le domaine/sous-domaine à servir (doit exister au préalable) |
-| Application startup file | `server.js` |
+### 1.2 Secrets GitHub
 
-**Ne pas cliquer sur « Run NPM Install »** : le bundle est autonome, l'installation serveur est inutile et risquée.
+Dépôt GitHub → *Settings → Secrets and variables → Actions* :
 
-## 3. Déposer et extraire le bundle
+| Secret | Requis | Rôle |
+|--------|--------|------|
+| `FTP_HOST` / `FTP_USER` / `FTP_PASSWORD` | ✅ | accès FTP LWS (identifiants LWS Panel) |
+| `DATABASE_URL` | ✅ | URI Aiven (`postgresql://…?sslmode=require`) |
+| `AUTH_SECRET` | ✅ | secret JWT — **le même que Vercel** (sessions compatibles) |
+| `APP_URL` | ✅ | `https://wondertoursandservices.com` — base des liens emails + API fetchée au build |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | ✅ | login admin (smoke de prod) |
+| `EDITOR_EMAIL` / `EDITOR_PASSWORD` | ⚪ | checks éditeur du smoke |
+| `RESEND_API_KEY` | ⚪ | emails transactionnels (sinon silencieusement ignorés) |
+| `DEEPL_API_KEY` | ⚪ | bouton « Traduire » du dashboard (sinon `503`) |
+| `IMGBB_API_KEY` | ⚪ | médiathèque distante (sinon dépôt local `uploads/`) |
 
-1. Uploader le `.tar.gz` dans `~/wondertours` (FTP ou gestionnaire de fichiers cPanel).
-2. Extraire :
-   - Terminal cPanel : `tar -xzf wondertours-standalone-*.tar.gz -C ~/wondertours`
-   - ou gestionnaire de fichiers : clic droit → *Extract*.
-3. Vérifier la structure à la racine de `~/wondertours` : `server.js`, `node_modules/`, `public/`, `.next/` (dossier caché — l'afficher dans le gestionnaire, *Settings → Show hidden files*). Le tar inclut les fichiers cachés.
+Sans les secrets requis, le workflow échoue volontairement à la première étape avec la liste exacte des manquants.
 
-## 4. Variables d'environnement
+### 1.3 Base de données
 
-Dans *Setup Node.js App* → **Environment variables** :
+La base Aiven est déjà migrée et seedée (procédure : [`docs/deployment.md`](deployment.md)). Chaque déploiement rejoue `prisma migrate deploy` avant tout upload.
 
-| Variable | Valeur |
-|----------|-------|
-| `DATABASE_URL` | URI **Aiven** (`…?sslmode=require` — le TLS est géré par `lib/pg-adapter.ts`) |
-| `AUTH_SECRET` | secret JWT du dashboard (**requis** ; `openssl rand -base64 32`) |
-| `IMGBB_API_KEY` | recommandée — uploads persistants de la médiathèque |
-| `DEEPL_API_KEY` | optionnelle — traduction DeepL (sinon la route répond 503) |
-| `HOSTNAME` | `0.0.0.0` (recommandé — garantit un bind local même si l'hébergeur exporte `HOSTNAME`) |
-| `DATABASE_POOL_MAX` | optionnelle — plafond du pool pg du process (défaut 2 ; Aiven Hobbyist : garder ≤ 3) |
+## 2. Déploiement automatique (GitHub Actions)
 
-`NODE_ENV` est géré par le mode Production de l'application — ne pas le définir. Après chaque modification : *Save* puis *Restart*.
+[`.github/workflows/deploy-lws.yml`](../.github/workflows/deploy-lws.yml) se déclenche :
 
-## 5. Démarrer et vérifier
+- **automatiquement** : quand la CI est verte sur `master` (déclencheur `workflow_run`) — les runs de CI des PR ne déploient jamais ;
+- **manuellement** : onglet *Actions → Deploy LWS → Run workflow*.
 
-1. *Setup Node.js App* → **Restart**.
-2. Premier hit lent possible (boot + connexion Aiven à froid — `lib/db.ts` tolère jusqu'à ~45 s).
-3. Vérification depuis la machine locale :
+Ordre des étapes (l'API reste disponible pendant la mise à jour des pages) :
 
-```bash
-bash scripts/smoke-api.sh https://<url-lws>   # 32+ vérifications : publics, auth, rôles, dashboard
-```
+1. vérification des secrets (liste ci-dessus) ;
+2. `prisma migrate deploy` sur Aiven — **toujours en premier** ;
+3. génération de `php-api/config.local.php` depuis les secrets (`php php-api/scripts/gen-config-local.php`, perms 600) ;
+4. compression idempotente des images, puis `next build` — les pages publiques fetchent l'API déployée (`APP_URL`) **au build** ; si l'API est indisponible, repli sur `lib/data/*` ;
+5. upload **API d'abord** : `lftp mirror -R --delete php-api/ → public_html/api/` (exclus les outils de dev : `router-dev.php`, `test-connexion.php`, `config.example.php`, `scripts/`) ;
+6. upload **frontend** : `lftp mirror -R --delete out/ → public_html/` — `--delete` retire les pages périmées (slugs renommés…) mais **préserve strictement** `/api`, `/uploads` et `/.well-known` (exclusions `-X`) ;
+7. smoke de l'API en production : `SMOKE_API_ONLY=1 bash scripts/smoke-api.sh "$APP_URL"` ;
+8. nettoyage des fichiers sensibles du runner (`.env`, `config.local.php`, `~/.netrc`).
 
-> Note : le script lit `.env` **local** pour les comptes et purge ses lignes de test via `psql` — cela fonctionne tant que la base est joignable depuis la machine (Aiven : oui). Après une future bascule sur le PostgreSQL local LWS, l'accès distant étant généralement bloqué, la purge ne s'exécutera pas : supprimer les lignes `Smoke Test` via phpPgAdmin.
+Les identifiants FTP ne figurent jamais en clair : lftp lit `~/.netrc` (perms 600, `umask 077`).
 
-4. Dashboard : `https://<url-lws>/dashboard` → connexion admin (comptes présents dans la base Aiven).
+> ⚠️ **Effets du smoke en production** : il crée puis supprime une réservation, une demande de contact et un compte de test ; les emails transactionnels correspondants partent réellement si `RESEND_API_KEY` est configurée.
 
-## 6. Débogage Passenger
+## 3. Premier déploiement / procédure manuelle (repli FTP)
 
-- **Page blanche / 503** : les erreurs d'exécution vont dans le log Apache — cPanel → *Errors* (ou *Metrics → Errors*) du domaine.
-- Afficher l'erreur directement dans le navigateur le temps du diagnostic : dans le `.htaccess` du domaine (sous `public_html`), ajouter `PassengerFriendlyErrorPages on` — à retirer ensuite.
-- Une **500 immédiate** au boot vient presque toujours d'une variable manquante (`AUTH_SECRET`) ou d'un bind raté (§4, `HOSTNAME`).
-- Chaque changement de variable d'environnement exige un *Restart*.
-
-## 7. Mises à jour
+Si les secrets ne sont pas encore créés (ou pour un déploiement hors CI), la même chaîne s'exécute localement :
 
 ```bash
-bash scripts/package-lws.sh --smoke        # nouveau bundle validé
+bun install
+bun run db:deploy                      # 1. migrations Aiven
+php php-api/scripts/gen-config-local.php   # 2. config.local.php depuis .env
+bun scripts/compress-images.ts
+bun run build                          # 3. export statique → out/ (APP_URL du .env)
+cp public/.htaccess out/.htaccess
+
+# 4. Upload (lftp) — identifiants via ~/.netrc (jamais en ligne de commande)
+# printf 'machine <hôte> login <utilisateur> password <motdepasse>\n' >> ~/.netrc && chmod 600 ~/.netrc
+lftp "ftp://$FTP_HOST" <<'LFTP'
+set net:timeout 30
+set net:max-retries 5
+mirror -R --delete --parallel 8 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
+mirror -R --delete --parallel 8 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
+quit
+LFTP
+
+# 5. Vérification
+SMOKE_API_ONLY=1 bash scripts/smoke-api.sh https://wondertoursandservices.com
 ```
 
-Puis sur le serveur : supprimer les anciens répertoires remplacés avant extraction (évite l'accumulation de chunks obsolètes) :
+Sans lftp : uploader le contenu de `php-api/` puis de `out/` via le gestionnaire de fichiers LWS (même structure, en respectant l'ordre API → frontend). L'**ordre importe** : l'API doit être en place avant que les pages ne la consomment, et les fichiers cachés (`.htaccess`) doivent être inclus.
 
-```bash
-cd ~/wondertours && rm -rf node_modules .next public server.js
-# uploader le nouveau tar.gz puis :
-tar -xzf wondertours-standalone-*.tar.gz -C ~/wondertours
-```
+## 4. Rôle des `.htaccess`
 
-*Restart* depuis cPanel, puis smoke test.
+**`public_html/.htaccess`** (issu de `public/.htaccess`, exporté dans `out/`) :
 
-## 8. CI/CD GitHub Actions
+- URLs propres : `/chemin` → `/chemin.html` quand le fichier existe. L'export écrit chaque route en `<chemin>.html` ; les dossiers du même nom ne contiennent que les payloads RSC `.txt` — d'où l'absence volontaire de `!-d` ;
+- **sentinelle dashboard** : les pages d'édition `/dashboard/<ressource>/<uuid>` ne sont pas exportées par UUID — une seule coquille `dashboard/<res>/_.html` existe, le composant client lit l'UUID dans l'URL et charge les données via l'API. Le `.htaccess` réécrit l'URL UUID (et le payload RSC `.txt` demandé par `next/link`) vers la sentinelle ;
+- `ErrorDocument 404 /404.html` ;
+- `Options -Indexes`, et les requêtes `/api/*` passent au travers (aucun `/api/<chemin>.html` n'existe) vers le `.htaccess` du sous-répertoire.
 
-Deux workflows (dossiers `.github/workflows/`) :
+**`public_html/api/.htaccess`** : `RewriteBase /api/`, refus (`[F]`) des fichiers de config/outils (`config.local.php`, `config.example.php`, `router-dev.php`, `test-connexion.php`), et toute requête qui n'est pas un fichier existant sert `index.php`.
 
-- **CI** (`ci.yml`) — à chaque push sur `master` et chaque PR : lint, typecheck, **tests sur un PostgreSQL 16 éphémère** (migrations + seed, aucune clé externe requise : imgBB/DeepL sont mockés), puis build avec vérification du bundle standalone. Statut visible dans l'onglet *Actions* du dépôt.
-- **Package LWS** (`package-lws.yml`) :
-  - **manuel** : onglet *Actions* → *Package LWS* → *Run workflow* → l'artefact `wondertours-lws-bundle` (30 jours de rétention) est téléchargeable depuis la page de la run ;
-  - **sur tag** :
+## 5. Vérification
 
-    ```bash
-    git tag lws-v1.0.0 && git push origin lws-v1.0.0
-    ```
+- **Smoke complet** : `SMOKE_API_ONLY=1 bash scripts/smoke-api.sh https://wondertoursandservices.com` — une quarantaine de vérifications : endpoints publics, écritures (contact, réservation), auth admin/éditeur, 401/403, CRUD, rôles. La purge des lignes de test utilise `psql` depuis la machine qui exécute le script (le `.env` doit donc contenir un `DATABASE_URL` joignable — Aiven l'est) ; sans lui, supprimer les lignes `Smoke Test` via la console Aiven.
+- **Dashboard** : `https://wondertoursandservices.com/dashboard` → connexion admin (comptes présents dans la base Aiven).
+- **Médias** : sans `IMGBB_API_KEY`, les uploads sont déposés dans `public_html/uploads/` (créé automatiquement, servi sous `/uploads/`) — **persistant** sur LWS, contrairement à Vercel.
 
-    → le tar.gz est aussi publié en **GitHub Release** (pièce jointe).
+## 6. Débogage
 
-Le mutualisé LWS n'expose ni SSH ni API de déploiement : **l'upload vers cPanel reste manuel** — l'artefact/Release sert de point de dépôt unique et reproductible (nommé avec la révision git + l'heure).
+- **Log applicatif** : définir `debug_log` dans `php-api/config.local.php` (chemin **absolu** hors `public_html`, ex. `$home/wt-debug.log`) — vide = désactivé. À faire via une édition manuelle du fichier sur le serveur ou en régénérant la config, jamais en le commitant.
+- **Erreurs Apache** : LWS Panel → logs / erreurs du domaine.
+- **500 immédiate** : presque toujours `DATABASE_URL` ou `AUTH_SECRET` absents (le routeur renvoie « Configuration manquante : … »), ou extension `pdo_pgsql` désactivée — revérifier avec `test-connexion.php` (§1.1, à supprimer après usage).
+- **Page 404 systématique** : vérifier que `.htaccess` a bien été uploadé (fichier caché) et que le module `mod_rewrite` est actif (par défaut chez LWS).
+- **Pages publiques figées/vide** : le build fetchait l'API au moment du `next build` — relancer le déploiement (étape 4-6) après avoir vérifié que `APP_URL` est correct.
 
-## 9. Bascule future vers le PostgreSQL local LWS *(documentée — pas encore requise)*
+## 7. Mises à jour et retour arrière
 
-Avantage : latence minimale + sauvegardes quotidiennes LWS incluses. Le code **n'a pas besoin de modification** — une URI sans `sslmode` donne une connexion locale sans SSL (cf. `lib/pg-adapter.ts`).
+- **Mise à jour** : merger vers `master` → CI → déploiement automatique. Une migration de schéma est appliquée par l'étape 2 **avant** l'upload du nouveau code.
+- **Retour arrière** : `git revert <commit>` sur `master` → push → la CI redéploie l'état précédent. Le schéma n'étant jamais dégradé automatiquement, une migration passée reste en place (à n'annuler qu'avec une migration inverse explicite).
+- **Repli plateforme** : tant que le DNS pointe vers LWS, l'instance Vercel reste déployée et fonctionnelle — y rebasculer = pointer le DNS de nouveau vers Vercel. Après la bascule définitive, le projet Vercel peut être archivé.
 
-1. **Créer la base** : cPanel → *PostgreSQL Databases* — base et utilisateur (noms préfixés par le compte, ex. `cpuser_wondertours` / `cpuser_wtadmin`), associer l'utilisateur à la base avec *ALL PRIVILEGES*.
-2. **Créer le schéma** (sans connexion à la base — génère du SQL) :
+## 8. Bascule future vers un PostgreSQL local LWS *(documentée — pas encore requise)*
 
+L'offre Perso expose MySQL ; la bascule vers une base locale suppose une offre LWS supérieure avec PostgreSQL. Le code ne change pas (une URI sans `sslmode` donne une connexion locale).
+
+1. Créer la base + l'utilisateur (LWS Panel → PostgreSQL), noter l'URI locale.
+2. Générer le schéma et l'importer (l'accès distant au PostgreSQL mutualisé étant bloqué, `prisma migrate deploy` ne fonctionne que pour Aiven) :
    ```bash
    bunx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script > schema-lws.sql
    ```
+   Import via phpPgAdmin (onglet *SQL*), puis `pg_dump` de la base Aiven importé de la même façon.
+3. Basculer `DATABASE_URL` : secret GitHub (déploiements) **et** `php-api/config.local.php` régénéré (l'étape 3 de la CI s'en charge au run suivant).
+4. Conserver Aiven en secours le temps de valider (retour arrière = remettre l'ancienne URI).
 
-   Importer `schema-lws.sql` via phpPgAdmin (cPanel → *phpPgAdmin* → base → onglet *SQL*). L'accès distant au PostgreSQL étant bloqué sur le mutualisé, `prisma migrate deploy` **depuis la machine locale ne fonctionne pas**.
-3. **Copier les données** : depuis la machine locale — `pg_dump` de la base Aiven, puis import du fichier dans phpPgAdmin (la base est petite ; via l'onglet *SQL* ou *Import*).
-4. **Basculer** : changer `DATABASE_URL` dans cPanel vers `postgresql://cpuser_wtadmin:<motdepasse>@localhost:5432/cpuser_wondertours` (sans `sslmode`), *Save* + *Restart*, puis smoke test (cf. note §5 sur la purge).
-5. Conserver Aiven en secours le temps de valider (rollback = remettre l'ancienne `DATABASE_URL`).
+## 9. Domaine et SSL
 
-## 10. Domaine et SSL *(à définir)*
-
-- Quand le domaine est choisi : le déclarer chez LWS, l'associer comme *Application URL* (§2).
-- **AutoSSL** : cPanel → *SSL/TLS Status* → *Run AutoSSL* émet un certificat Let's Encrypt automatiquement.
-- Mettre à jour `SITE_CONFIG.url` dans `lib/constants.ts` (utilisé par `lib/seo.ts` et le réglage `site_url` du seed), puis rebuild + repackage + redéployer.
+- Pointer le domaine `wondertoursandservices.com` vers LWS (DNS de l'hébergeur).
+- **Certificat** : LWS Panel → SSL/Let's Encrypt (AutoSSL) émet un certificat automatiquement. Le cookie `wt_session` est `Secure` en production (l'API force HTTPS quand `app_url` est en https).
+- Mettre à jour si nécessaire `SITE_CONFIG.url` (`lib/constants.ts`, utilisé par le SEO et le seed) et le secret `APP_URL` — puis redéployer (rebuild : les pages publiques sont régénérées avec les bonnes URLs).
 
 ## Limites et notes
 
-- **Taille du bundle** (~83 Mo) : dominée par les images lourdes de `public/` — leur compression (déjà listée dans les limitations du README) réduira upload et extraction.
-- Le nom de dossier `public/photos_site wonder_tours/` (avec espace) est transporté tel quel dans le tar.
-- Pas de cache multi-instances à coordonner : un seul processus Passenger, cache disque local standard (`next start`-like) — aucune config supplémentaire requise.
-- Les variables cPanel ne sont jamais versionnées — ce document est la seule référence des variables attendues (cf. README « Variables d'environnement »).
+- Les pages publiques sont **statiques** : un changement de contenu (nouvel article, circuit modifié) n'apparaît qu'après un redéploiement (build). Le dashboard, lui, est always-fresh via l'API.
+- `lftp mirror --delete` ne touche jamais `/api`, `/uploads` ni `/.well-known` (exclusions) — ne pas retirer ces `-X` sous peine de perdre la config serveur ou les médias.
+- `config.local.php` est la seule source des secrets serveur ; il est régénéré à chaque déploiement depuis les secrets GitHub (jamais versionné).
+- Les variables GitHub ne sont jamais versionnées — ce document est la seule référence des secrets attendus (cf. README « Variables d'environnement »).

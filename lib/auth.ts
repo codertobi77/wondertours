@@ -60,7 +60,8 @@ const VALID_ROLES = ["admin", "editor", "viewer"] as const;
 
 /**
  * Contrôle de forme du payload et conversion en Session (source de vérité
- * partagée : proxy.ts, lib/api/utils.ts, lib/session.ts).
+ * partagée : le dashboard client via /api/auth/me, et l'API PHP qui
+ * revalide le JWT à chaque requête).
  * Un payload non conforme (champs manquants, rôle inconnu) est traité
  * comme non authentifié → null.
  */

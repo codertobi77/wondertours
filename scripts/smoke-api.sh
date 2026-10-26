@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Smoke test de l'API Wonder Tours.
 # Usage : ./scripts/smoke-api.sh [BASE_URL]
-# Nécessite un serveur démarré (bun run dev) et une base seedée (bun run db:seed).
+# Nécessite un serveur démarré (bun run dev, ou l'API PHP : php -S depuis
+# php-api/ avec router-dev.php) et une base seedée (bun run db:seed).
 # Crée une demande de contact et une réservation puis les supprime de la base
 # via psql (DATABASE_URL lu dans .env).
+#
+# SMOKE_API_ONLY=1 : cible l'API PHP (php-api/) — ignore les vérifications
+# des pages Next.js (/dashboard…), servies par le frontend et non par l'API.
 
 set -euo pipefail
 
@@ -43,10 +47,24 @@ check_json() {
   check "$label" "$expected" "$actual"
 }
 
+# env_value <CLÉ> — valeur du .env, guillemets encadrants retirés
+# (convention dotenv, cf. gen-config-local.php : sans ce retrait, le
+# DATABASE_URL quoté du .env rendait le psql de cleanup invalide —
+# échec silencieux, lignes de test jamais supprimées).
+env_value() {
+  local v
+  v=$(grep -E "^$1=" "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
+  case $v in
+    '"'*'"') v=${v#?}; v=${v%?} ;;
+    "'"*"'"  ) v=${v#?}; v=${v%?} ;;
+  esac
+  printf '%s' "$v"
+}
+
 cleanup() {
   set +e
   if [ -n "$BOOKING_ID" ] || [ -n "$CONTACT_ID" ] || [ -n "$SMOKE_USER_EMAIL" ]; then
-    DB_URL=$(grep -E '^DATABASE_URL=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
+    DB_URL=$(env_value DATABASE_URL)
     if [ -n "$DB_URL" ]; then
       [ -n "$BOOKING_ID" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM bookings WHERE id='$BOOKING_ID';" >/dev/null 2>&1
       [ -n "$CONTACT_ID" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM contact_requests WHERE id='$CONTACT_ID';" >/dev/null 2>&1
@@ -80,6 +98,12 @@ check "GET /api/blog" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/a
 BLOG_SLUG=$(curl -s "$BASE_URL/api/blog?pageSize=1" | python3 -c "import json,sys; print(json.load(sys.stdin)['items'][0]['slug'])")
 check "GET /api/blog/[slug]" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog/$BLOG_SLUG")"
 
+# Extensions pour l'export statique du frontend (pages publiques).
+check "GET /api/blog-categories" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog-categories")"
+SETTINGS_JSON=$(curl -s "$BASE_URL/api/settings")
+check "GET /api/settings" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/settings")"
+check_json "  liste blanche (clés autorisées uniquement)" "True" "$SETTINGS_JSON" "all(i['key'] in ('founder_bio_fr', 'founder_bio_en') for i in d['items'])"
+
 # ───────────────────── Écritures publiques ─────────────────────
 
 CONTACT_JSON=$(curl -s -X POST "$BASE_URL/api/contact" -H "Content-Type: application/json" \
@@ -103,13 +127,16 @@ check "POST /api/bookings circuit inconnu" 400 "$(curl -s -o /dev/null -w '%{htt
 
 # ───────────────────── Authentification ─────────────────────
 # Comptes créés par le seed (bun run db:seed) depuis le .env.
-ADMIN_EMAIL=$(grep -E '^ADMIN_EMAIL=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
-ADMIN_PASSWORD=$(grep -E '^ADMIN_PASSWORD=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
-EDITOR_EMAIL=$(grep -E '^EDITOR_EMAIL=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
-EDITOR_PASSWORD=$(grep -E '^EDITOR_PASSWORD=' "$ROOT_DIR/.env" | head -1 | cut -d= -f2-)
+ADMIN_EMAIL=$(env_value ADMIN_EMAIL)
+ADMIN_PASSWORD=$(env_value ADMIN_PASSWORD)
+EDITOR_EMAIL=$(env_value EDITOR_EMAIL)
+EDITOR_PASSWORD=$(env_value EDITOR_PASSWORD)
 
-check "GET /dashboard sans session → redirection login" 307 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard")"
+if [ -z "${SMOKE_API_ONLY:-}" ]; then
+  check "GET /dashboard sans session → redirection login" 307 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard")"
+fi
 check "GET /api/dashboard/users sans session" 401 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/dashboard/users")"
+check "GET /api/auth/me sans session → 401" 401 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/auth/me")"
 check "POST /api/auth/login mauvais mot de passe" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"mauvais\"}")"
 
 LOGIN_JSON=$(curl -s -c "$ADMIN_JAR" -X POST "$BASE_URL/api/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}")
@@ -123,8 +150,10 @@ check_json "  message anti-énumération" "Si un compte actif existe avec cet em
 check "POST /api/auth/forgot-password (admin, email réel) → 200" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/forgot-password" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\"}")"
 check "POST /api/auth/reset-password token invalide → 400" 400 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/reset-password" -H "Content-Type: application/json" -d '{"token":"0000000000000000000000000000000000000000000000000000000000000000","password":"motdepasse123"}')"
 check "POST /api/auth/reset-password mot de passe trop court → 400" 400 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/reset-password" -H "Content-Type: application/json" -d '{"token":"0000000000000000000000000000000000000000000000000000000000000000","password":"court"}')"
-check "GET /dashboard/forgot-password sans session" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard/forgot-password")"
-check "GET /dashboard/reset-password sans session" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard/reset-password?token=abc")"
+if [ -z "${SMOKE_API_ONLY:-}" ]; then
+  check "GET /dashboard/forgot-password sans session" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard/forgot-password")"
+  check "GET /dashboard/reset-password sans session" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard/reset-password?token=abc")"
+fi
 
 # ───────────────────── Endpoints dashboard (session admin) ─────────────────────
 
@@ -147,7 +176,9 @@ if [ -n "$EDITOR_EMAIL" ] && [ -n "$EDITOR_PASSWORD" ]; then
 
   check "GET /api/dashboard/circuits (éditeur)" 200 "$(curl -s -b "$EDITOR_JAR" -o /dev/null -w '%{http_code}' "$BASE_URL/api/dashboard/circuits")"
   check "GET /api/dashboard/users (éditeur) → 403" 403 "$(curl -s -b "$EDITOR_JAR" -o /dev/null -w '%{http_code}' "$BASE_URL/api/dashboard/users")"
-  check "GET /dashboard/users (éditeur) → redirection" 307 "$(curl -s -b "$EDITOR_JAR" -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard/users")"
+  if [ -z "${SMOKE_API_ONLY:-}" ]; then
+    check "GET /dashboard/users (éditeur) → redirection" 307 "$(curl -s -b "$EDITOR_JAR" -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard/users")"
+  fi
 else
   echo "⚠ EDITOR_EMAIL/EDITOR_PASSWORD absents du .env : checks éditeur ignorés" >&2
 fi

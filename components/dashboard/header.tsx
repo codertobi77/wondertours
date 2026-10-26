@@ -25,8 +25,8 @@ export function Header({ onMenuClick, user }: HeaderProps) {
   const userInitial = userName.charAt(0).toUpperCase();
   const roleLabel = user ? (ROLE_LABELS[user.role] ?? user.role) : null;
 
-  /** Déconnexion : invalide le cookie de session puis recharge —
-   * le proxy redirige alors vers /dashboard/login. */
+  /** Déconnexion : invalide le cookie de session côté API puis recharge —
+   * la garde client du layout renvoie alors vers /dashboard/login. */
   async function handleLogout() {
     setShowUserMenu(false);
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);

@@ -1,7 +1,9 @@
 # API Wonder Tours — Documentation
 
 Référence complète des endpoints REST pour le développeur front.
-Base locale : `http://localhost:3000`. Toutes les réponses sont en JSON.
+Toutes les réponses sont en JSON.
+
+Servie en production par l'**API PHP** `php-api/` (same-origin `/api/*`, zéro dépendance) — le contrat ci-dessous est identique à celui de l'API Next d'origine. En local : `http://localhost:3000/api/…` (proxy dev vers l'API PHP, cf. README « Démarrage local ») ou directement `http://127.0.0.1:8099/api/…` (`php -S` depuis `php-api/`).
 
 ## Conventions
 
@@ -57,6 +59,7 @@ Tous acceptent `page`, `pageSize`, `q`.
 
 * `GET /api/blog` — articles publiés. Query : `page`, `pageSize`, `q`, `category` (slug catégorie blog), `featured`. Tri : `isFeatured desc`, `publishedAt desc`. Relation `category` incluse.
 * `GET /api/blog/[slug]` — article publié par slug, **incrémente `views`** à chaque appel.
+* `GET /api/blog-categories` — catégories du blog **actives**, tri `sortOrder asc, name asc` (filtres de l'export statique du frontend). Accepte `page`, `pageSize`.
 
 ### Contact
 
@@ -78,6 +81,7 @@ Soumission du formulaire public.
 * `sejour` et `autre` (valeurs envoyées par le front actuel) sont mappés en `stay` / `other`.
 * `travelDate` accepte `""` (formulaire vide).
 * Réponse `201` : `{ "message": "Demande envoyée avec succès", "id": "uuid" }`.
+* Emails best effort (Resend) : accusé de réception au visiteur + notification interne (reply-to = email du visiteur) — jamais bloquants pour la requête.
 
 ### Réservations
 
@@ -108,6 +112,12 @@ Soumission du formulaire public.
   "status": "pending"
 }
 ```
+* Emails best effort (Resend) : confirmation au client (récapitulatif + référence) + notification interne — jamais bloquants pour la requête.
+
+### Paramètres publics
+
+#### `GET /api/settings`
+Liste blanche stricte de paramètres publics pour l'export statique du frontend (enveloppe de pagination standard) : seules les clés `founder_bio_fr` / `founder_bio_en` sont exposées sans session — rien d'autre de la table `settings`. Ces biographies sont pilotées depuis `/dashboard/settings` (cf. « Paramètres » ci-dessous).
 
 ---
 
@@ -121,6 +131,9 @@ Sessions JWT stockées dans le cookie httpOnly `wt_session` (7 jours, signées a
 ```
 * Réponse `200` : `{ "user": { "id", "email", "name", "role" } }` + cookie de session `wt_session` (httpOnly).
 * Identifiants invalides ou compte désactivé → `401` avec un message générique (ne révèle pas si l'email existe).
+
+#### `GET /api/auth/me`
+Session courante — garde client du frontend statique (`/dashboard/**`). Réponse `200` : `{ "user": { "id", "email", "name", "role" } }` (même forme que la réponse de login). Sans session valide ou compte désactivé → `401`.
 
 #### `POST /api/auth/logout`
 Supprime le cookie de session. Réponse `200` : `{ "success": true }`.
@@ -145,7 +158,7 @@ Supprime le cookie de session. Réponse `200` : `{ "success": true }`.
 > 🔒 **Authentification requise** — sans session → `401`, rôle insuffisant → `403` :
 > * **GET** : tous les rôles authentifiés, sauf `users/**` (admin) ;
 > * **Écritures** (POST/PATCH/DELETE) : `admin` et `editor`, sauf `users/**` (admin) ;
-> * les pages `/dashboard/**` sont gardées par `proxy.ts` : sans session → redirection vers `/dashboard/login` ; `/dashboard/users**` → admin.
+> * les pages `/dashboard/**` sont gardées côté client (`/api/auth/me` → 401 sans session → redirection vers `/dashboard/login`) — le garde n'est qu'ergonomique, l'autorisation réelle est appliquée par l'API à chaque requête (ci-dessus).
 
 ### CRUD générique
 
@@ -315,5 +328,5 @@ Le mot de passe est hashé en bcrypt ($2b$).
 
 ## Validation & tests
 
-* `bun test` — tests d'intégration (CRUD par domaine, slug, upload, bcrypt, stats, sessions JWT).
-* `./scripts/smoke-api.sh [BASE_URL]` — vérifications curl : endpoints publics, authentification (login admin/éditeur, 401/403, logout, redirection proxy), endpoints dashboard, création contact/booking + création/modification/suppression d'un compte test (nettoyage automatique). Nécessite `bun run dev` + base seedée (`bun run db:seed`).
+* `bun test` — tests d'intégration de la couche métier Node (CRUD par domaine, slug, upload, bcrypt, stats, sessions JWT) sur PostgreSQL éphémère.
+* `./scripts/smoke-api.sh [BASE_URL]` — vérifications curl du contrat complet : endpoints publics, authentification (login admin/éditeur, 401/403, logout), endpoints dashboard, création contact/booking + création/modification/suppression d'un compte test (nettoyage automatique via psql). `SMOKE_API_ONLY=1` cible l'API seule (mode déploiement). Nécessite une base seedée (`bun run db:seed`) et un serveur : `php -S 127.0.0.1:8099 router-dev.php` depuis `php-api/`, ou `bun run dev` (proxy `/api/*` vers :8099).

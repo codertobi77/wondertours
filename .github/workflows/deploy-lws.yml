@@ -1,0 +1,208 @@
+# Déploiement continu vers LWS (mutualisé Perso) via FTP/lftp.
+#
+# Déclenchement :
+#   - automatique : à chaque CI verte portant sur master (workflow_run) ;
+#   - manuel : workflow_dispatch (onglet Actions).
+#
+# Ordre (l'API reste disponible pendant la mise à jour des pages) :
+#   1. migrations PostgreSQL (prisma migrate deploy, base Aiven) ;
+#   2. php-api/config.local.php généré depuis les secrets (gitignoré,
+#      uploadé par lftp — c'est la config du serveur) ;
+#   3. build statique : les pages publiques fetchent l'API déployée
+#      (APP_URL) au build, repli lib/data/* si elle est indisponible ;
+#   4. upload API → public_html/api/ (routeur .htaccess inclus) ;
+#   5. upload frontend → public_html/ (mirror --delete : retire les pages
+#      périmées, préserve /api, /uploads et /.well-known) ;
+#   6. smoke des 39 routes du contrat sur le site en production.
+#
+# Secrets requis (Settings → Secrets and variables → Actions) :
+#   FTP_HOST, FTP_USER, FTP_PASSWORD   accès FTP cPanel LWS
+#   DATABASE_URL                       PostgreSQL Aiven (sslmode=require)
+#   AUTH_SECRET                        secret JWT (identique à Vercel —
+#                                      sessions compatibles entre stacks)
+#   APP_URL                            https://wondertoursandservices.com
+#   ADMIN_EMAIL, ADMIN_PASSWORD        compte admin (smoke + login)
+# Optionnels (fonctionnalités dégradées sinon, jamais bloquants) :
+#   RESEND_API_KEY, DEEPL_API_KEY, IMGBB_API_KEY,
+#   EDITOR_EMAIL, EDITOR_PASSWORD (checks éditeur du smoke)
+
+name: Deploy LWS
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+concurrency:
+  group: deploy-lws
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Les runs de CI des PR (head_branch != master) ne déploient pas.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier les secrets de déploiement
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+          EDITOR_EMAIL: ${{ secrets.EDITOR_EMAIL }}
+          EDITOR_PASSWORD: ${{ secrets.EDITOR_PASSWORD }}
+        run: |
+          missing=0
+          for v in FTP_HOST FTP_USER FTP_PASSWORD DATABASE_URL AUTH_SECRET APP_URL ADMIN_EMAIL ADMIN_PASSWORD; do
+            if [ -z "${!v}" ]; then
+              echo "❌ Secret requis absent : $v (Settings → Secrets and variables → Actions)" >&2
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then exit 1; fi
+          echo "✓ Secrets requis présents"
+          for v in RESEND_API_KEY DEEPL_API_KEY IMGBB_API_KEY EDITOR_EMAIL EDITOR_PASSWORD; do
+            if [ -z "${!v:-}" ]; then
+              echo "::warning::Secret optionnel absent : $v — fonctionnalité dégradée (ou checks éditeur du smoke ignorés)"
+            fi
+          done
+
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+        # PHP ne sert qu'à générer php-api/config.local.php
+        # (php-api/scripts/gen-config-local.php — aucune extension requise).
+
+      - name: Écrire le .env du run (éphémère)
+        run: |
+          cat > .env <<EOF
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+          APP_URL=${{ secrets.APP_URL }}
+          RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+          DEEPL_API_KEY=${{ secrets.DEEPL_API_KEY }}
+          IMGBB_API_KEY=${{ secrets.IMGBB_API_KEY }}
+          SECURE_COOKIES=true
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          EDITOR_EMAIL=${{ secrets.EDITOR_EMAIL }}
+          EDITOR_PASSWORD=${{ secrets.EDITOR_PASSWORD }}
+          EOF
+        # .env* est gitignoré, le runner est jetable. Une clé absente
+        # s'écrit vide : gen-config-local.php l'ignore, le smoke n'active
+        # pas les checks correspondants (emails, imgBB, DeepL, éditeur).
+
+      - name: Installer les dépendances
+        run: bun install --frozen-lockfile
+
+      - name: Générer le client Prisma
+        run: bun run db:generate
+
+      - name: Appliquer les migrations (prisma migrate deploy)
+        run: bun run db:deploy
+        # Toujours en premier : le schéma Aiven est migré avant que le
+        # nouveau code ne soit uploadé (l'API PHP sert ce même schéma).
+
+      - name: Générer php-api/config.local.php depuis les secrets
+        run: php php-api/scripts/gen-config-local.php
+        # Lit le .env ci-dessus (aucune valeur affichée) et écrit
+        # php-api/config.local.php (gitignoré, perms 600).
+
+      - name: Compresser les images (idempotent)
+        run: bun scripts/compress-images.ts
+        # Ne retraite que les fichiers nouveaux/modifiés (marqueur
+        # scripts/.image-compression.json) — aucune perte de génération.
+
+      - name: Build statique (export → out/)
+        run: bun run build
+        # APP_URL (chargé du .env) : fetch du contenu au build depuis
+        # l'API déployée ; les pages sont statiques, il n'y a aucun
+        # serveur Node en production.
+
+      - name: Copier le .htaccess racine dans l'export
+        run: cp public/.htaccess out/.htaccess
+        # Le build copie public/ → out/ ; le cp garantit le .htaccess
+        # de façon déterministe (URLs propres + sentinelle dashboard).
+
+      - name: Installer lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Écrire les identifiants FTP (~/.netrc, perms 600)
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          umask 077
+          printf 'machine %s login %s password %s\n' "$FTP_HOST" "$FTP_USER" "$FTP_PASSWORD" > "$HOME/.netrc"
+          # lftp lit ~/.netrc : les identifiants ne figurent ni dans la
+          # ligne de commande ni dans les logs.
+
+      - name: Déployer l'API PHP → public_html/api/
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+        run: |
+          lftp "ftp://$FTP_HOST" <<'LFTP'
+          set net:timeout 30
+          set net:max-retries 5
+          set ftp:ssl-allow true
+          mirror -R --delete --parallel 8 \
+            -X router-dev.php -X test-connexion.php -X config.example.php \
+            -X scripts/ -X scripts/* \
+            php-api/ public_html/api/
+          quit
+          LFTP
+        # Inclut php-api/.htaccess (routeur /api/) et config.local.php
+        # (secrets du serveur). Exclus : outils de dev uniquement.
+        # --delete retire côté serveur les fichiers retirés du dépôt.
+
+      - name: Déployer le frontend statique → public_html/
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+        run: |
+          lftp "ftp://$FTP_HOST" <<'LFTP'
+          set net:timeout 30
+          set net:max-retries 5
+          set ftp:ssl-allow true
+          mirror -R --delete --parallel 8 \
+            -X api -X api/ -X 'api/*' \
+            -X uploads -X uploads/ -X 'uploads/*' \
+            -X .well-known -X .well-known/ -X '.well-known/*' \
+            out/ public_html/
+          quit
+          LFTP
+        # --delete retire les pages périmées (slugs renommés…) mais
+        # préserve strictement : /api (étape précédente), /uploads
+        # (médias déposés par l'API PHP) et /.well-known (ACME).
+
+      - name: Smoke de l'API en production
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: SMOKE_API_ONLY=1 bash scripts/smoke-api.sh "$APP_URL"
+        # Vérifie le contrat complet sur le site en production (public,
+        # écritures, auth admin/éditeur, rôles). Crée puis supprime une
+        # réservation, une demande de contact et un compte de test dans
+        # la base (nettoyage psql via le .env du run) — les emails
+        # transactionnels correspondants partent si RESEND_API_KEY est
+        # configurée.
+
+      - name: Nettoyer les fichiers sensibles du run
+        if: always()
+        run: rm -f .env php-api/config.local.php "$HOME/.netrc"

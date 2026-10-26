@@ -27,10 +27,9 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       if (response.ok) {
-        // Cookie posé par l'API : rafraîchir pour que le proxy et les
-        // composants serveur prennent la session en compte.
+        // Cookie posé par l'API : la garde client du layout relit la
+        // session via GET /api/auth/me au montage de /dashboard.
         router.replace("/dashboard");
-        router.refresh();
         return;
       }
       const data = (await response.json().catch(() => null)) as {

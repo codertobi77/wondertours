@@ -3,6 +3,8 @@ export interface BlogPost {
   slug: string;
   title: string;
   category: string;
+  /** Slug de la catégorie (filtrage ?categorie= côté client). */
+  categorySlug?: string;
   excerpt: string;
   content: string;
   image: string;

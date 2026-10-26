@@ -1,0 +1,33 @@
+# Wonder Tours — frontend statique (export Next.js, trailingSlash=false)
+# + API PHP sous /api/ (cf. php-api/.htaccess, servi sous public_html/api/).
+#
+# L'export écrit chaque route en <chemin>.html ; les dossiers du même nom
+# ne contiennent que les payloads RSC en .txt (aucun index.html). Ce
+# .htaccess sert donc les URLs propres et les pages d'édition dashboard.
+
+Options -Indexes
+DirectoryIndex index.html
+
+RewriteEngine On
+RewriteBase /
+
+# ── Dashboard : pages d'édition /dashboard/<ressource>/<uuid> ─────────────
+# Une seule coquille sentinelle par ressource (out/dashboard/<res>/_.html) :
+# le composant client lit l'id réel dans l'URL (useParams) et charge les
+# données via l'API. Idem pour le payload RSC .txt demandé par la
+# navigation client (next/link) vers une page d'édition.
+RewriteRule ^dashboard/([a-z-]+)/[0-9a-fA-F-]{36}/?$ dashboard/$1/_.html [L]
+RewriteRule ^dashboard/([a-z-]+)/[0-9a-fA-F-]{36}\.txt$ dashboard/$1/_.txt [L]
+
+# ── URLs propres : /chemin → /chemin.html quand le fichier existe ─────────
+# Pas de RewriteCond !-d volontairement : les dossiers RSC existent pour
+# chaque page (ils ne servent aucune page). Les requêtes /api/* passent
+# au travers (aucun /api/<chemin>.html n'existe) vers le .htaccess de
+# public_html/api/, qui route tout vers le front controller PHP.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^(.*)$ $1.html [L]
+
+# ── Erreurs ────────────────────────────────────────────────────────────────
+# 404.html est généré par l'export Next (page not-found).
+ErrorDocument 404 /404.html

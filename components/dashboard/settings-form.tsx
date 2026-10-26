@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,7 +74,6 @@ const ALL_KEYS = FIELD_GROUPS.flatMap((group) =>
 );
 
 export function SettingsForm({ initial }: { initial: Record<string, string> }) {
-  const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<
@@ -106,7 +104,6 @@ export function SettingsForm({ initial }: { initial: Record<string, string> }) {
         return;
       }
       setFeedback({ type: "success", message: "Paramètres enregistrés." });
-      router.refresh();
     } catch {
       setFeedback({ type: "error", message: "Erreur réseau" });
     } finally {

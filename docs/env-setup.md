@@ -1,6 +1,6 @@
 # Configuration des variables d'environnement
 
-Les fichiers `.env*` sont gitignorés. Next.js/Bun chargent `.env.local` (priorité) puis `.env` ; en production, les variables sont définies côté Vercel.
+Les fichiers `.env*` sont gitignorés. Next.js/Bun chargent `.env.local` (priorité) puis `.env` ; en production, les variables vivent dans les secrets GitHub (déploiement LWS — cf. ci-dessous) ou côté Vercel (repli).
 
 ## Variables
 
@@ -44,7 +44,7 @@ URL publique utilisée pour les métadonnées (`metadataBase`, canonicals). À d
 Clé du service d'hébergement d'images imgBB (https://api.imgbb.com, compte gratuit). Elle pilote la médiathèque (`lib/services/media.ts` + client `lib/services/imgbb.ts`) :
 
 - **clé définie** : les uploads `POST /api/dashboard/media` partent vers imgBB — `url` est l'URL distante (`https://i.ibb.co/…`), `storagePath` conserve le `delete_url` imgBB (page de suppression manuelle — imgBB n'a pas d'API de suppression) ;
-- **clé absente** : fallback sur le stockage local `public/uploads/` — parfait en dev/tests, mais **non persistant sur Vercel** (FS en lecture seule).
+- **clé absente** : fallback sur le stockage local — parfait en dev/tests ; **persistant sur LWS** (dépôt `uploads/` du mutualisé, servi sous `/uploads/`), mais **non persistant sur Vercel** (FS en lecture seule).
 
 La clé est relue à chaque upload, pas au chargement du module.
 
@@ -67,20 +67,29 @@ Variables compagnes :
 
 - `MAIL_FROM` — expéditeur ; défaut `Wonder Tours <onboarding@resend.dev>` (domaine de test Resend : ne délivre que vers l'email du compte). En production, utiliser un domaine vérifié, ex. `MAIL_FROM="Wonder Tours <contact@wondertoursandservices.com>"` ;
 - `MAIL_TEAM_EMAIL` — destinataire(s) des notifications internes, séparés par des virgules ; défaut `SITE_CONFIG.contact.email` ;
-- `APP_URL` — base des liens insérés dans les emails (reset, dashboard) ; défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertoursandservices.com` ; en local : `http://localhost:3000`.
+- `APP_URL` — base des liens insérés dans les emails (reset, dashboard) **et API fetchée par les pages publiques au build de l'export statique** ; défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertoursandservices.com` ; en local : `http://localhost:8099` (API PHP).
+- `DEV_API_URL` — cible du proxy `/api/*` de `next dev` vers l'API PHP locale (défaut `http://127.0.0.1:8099`).
 
-## Production (Vercel)
+## Production (LWS)
 
-Ajouter au minimum : `DATABASE_URL`, `AUTH_SECRET`, et au premier déploiement `ADMIN_EMAIL` / `ADMIN_PASSWORD` + `EDITOR_EMAIL` / `EDITOR_PASSWORD` si le seed doit créer les comptes initiaux :
+Aucune variable n'est posée à la main sur le serveur : le workflow de déploiement ([`.github/workflows/deploy-lws.yml`](deployment-lws.md) §2) lit les **secrets GitHub** du dépôt, écrit un `.env` éphémère sur le runner et génère `php-api/config.local.php` (gitignoré, perms 600, uploadé par FTP — la seule config du serveur).
+
+Secrets requis : `FTP_HOST` / `FTP_USER` / `FTP_PASSWORD`, `DATABASE_URL` (Aiven), `AUTH_SECRET`, `APP_URL`, `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Optionnels (fonctionnalités dégradées sinon) : `EDITOR_EMAIL` / `EDITOR_PASSWORD`, `RESEND_API_KEY`, `DEEPL_API_KEY`, `IMGBB_API_KEY` — liste détaillée et rôles : [`deployment-lws.md`](deployment-lws.md) §1.2.
+
+Ordre de résolution côté serveur (`php-api/lib/Env.php`) : `config.local.php` → variable d'environnement → défauts intégrés.
+
+## Historique : Vercel (repli)
+
+Côté Vercel, au minimum : `DATABASE_URL`, `AUTH_SECRET`, et au premier déploiement `ADMIN_EMAIL` / `ADMIN_PASSWORD` + `EDITOR_EMAIL` / `EDITOR_PASSWORD` si le seed doit créer les comptes initiaux :
 
 ```bash
 bunx vercel env add AUTH_SECRET production
 ```
 
-Recommandées en production :
+Recommandées :
 
 ```bash
-bunx vercel env add IMGBB_API_KEY production   # uploads média persistants (sinon fallback local non persistant)
+bunx vercel env add IMGBB_API_KEY production   # uploads média persistants (sinon fallback local non persistant sur Vercel)
 bunx vercel env add DEEPL_API_KEY production   # optionnel : bouton « Traduire en anglais » du dashboard
 bunx vercel env add RESEND_API_KEY production  # emails transactionnels (contact, réservations, reset, bienvenue)
 # puis, avec un domaine vérifié dans Resend :

@@ -46,6 +46,12 @@ next-env.d.ts
 # generated prisma client
 /lib/generated/prisma
 
+# php-api (Perso) : config locale, médias déposés, logs
+/php-api/config.local.php
+/php-api/uploads/
+/php-api/logs/
+/uploads/
+
 # agent tooling
 /.agents/
 /.claude/

@@ -1,0 +1,17 @@
+# API PHP Wonder Tours — déployée sous public_html/api/ (ce fichier est
+# l'.htaccess d'Apache du répertoire /api/). Tout ce qui n'est pas un
+# fichier statique sert le front controller ; la QUERY STRING et
+# REQUEST_URI originaux sont préservés pour le routeur (index.php).
+#
+# Événement « RewriteRule … - [F] » et non « Require all denied » :
+# n'exige que AllowOverride FileInfo (mod_rewrite), plus sûr en mutualisé.
+
+RewriteEngine On
+RewriteBase /api/
+
+# Configuration et outils de développement : jamais servis en HTTP.
+RewriteRule ^(config\.(local|example)\.php|router-dev\.php|test-connexion\.php)$ - [F]
+
+# Front controller : toute requête qui n'est pas un fichier existant.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]

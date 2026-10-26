@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, Trash2, X, Clock, Archive, Eye, EyeOff, Pencil } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -25,9 +24,10 @@ async function readApiError(response: Response): Promise<string> {
 
 /**
  * Actions par ligne des listes dashboard : lien d'édition optionnel,
- * changement de statut via PATCH et suppression optionnelle via DELETE,
- * suivis d'un router.refresh() pour re-rendre les Server Components avec
- * les données à jour.
+ * changement de statut via PATCH et suppression optionnelle via DELETE.
+ * La page est client : `onChanged` (typiquement `reload` du hook
+ * useApiData) rafraîchit la liste après la mutation — l'autorisation est
+ * vérifiée côté API à chaque requête.
  */
 export function RowActions({
   id,
@@ -38,6 +38,7 @@ export function RowActions({
   enableDelete = false,
   deleteLabel = "Supprimer",
   confirmMessage = "Confirmer la suppression ?",
+  onChanged,
 }: {
   id: string;
   /** Ressource API, ex. "circuits" → DELETE /api/dashboard/circuits/[id]. Requis si enableDelete. */
@@ -52,9 +53,9 @@ export function RowActions({
   enableDelete?: boolean;
   deleteLabel?: string;
   confirmMessage?: string;
+  /** Callback de rafraîchissement de la liste après une mutation réussie. */
+  onChanged?: () => void;
 }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +72,7 @@ export function RowActions({
         setError(await readApiError(response));
         return;
       }
-      startTransition(() => router.refresh());
+      onChanged?.();
     } catch {
       setError("Erreur réseau");
     } finally {
@@ -92,8 +93,6 @@ export function RowActions({
     await mutate("DELETE", `/api/dashboard/${resource}/${id}`);
   }
 
-  const disabled = busy || isPending;
-
   return (
     <div className="flex items-center justify-end gap-2">
       {error && (
@@ -106,7 +105,7 @@ export function RowActions({
           key={status.value}
           variant="ghost"
           size="sm"
-          disabled={disabled}
+          disabled={busy}
           onClick={() => handleStatus(status.value)}
           title={status.label}
           className={status.className}
@@ -123,7 +122,7 @@ export function RowActions({
         <Button
           variant="ghost"
           size="sm"
-          disabled={disabled}
+          disabled={busy}
           onClick={handleDelete}
           title={deleteLabel}
           className="text-red-600 hover:text-red-700"
@@ -149,27 +148,38 @@ export const CONTACT_STATUS_ACTIONS = [
   { value: "closed", label: "Clôturer", icon: Archive, className: "text-gray-600 hover:text-gray-700" },
 ] as const;
 
-/**
- * Wrappers pour les pages serveur : les constantes *STATUS_ACTIONS ne sont
- * pas itérables côté serveur (références client), le spread doit donc
- * rester dans ce module client.
- */
-export function BookingRowActions({ id }: { id: string }) {
+/** Wrappers : les constantes *STATUS_ACTIONS ne sont pas itérables côté
+ * serveur (références client), le spread doit donc rester dans ce module. */
+export function BookingRowActions({
+  id,
+  onChanged,
+}: {
+  id: string;
+  onChanged?: () => void;
+}) {
   return (
     <RowActions
       id={id}
       statusEndpoint={`/api/dashboard/bookings/${id}/status`}
       statuses={[...BOOKING_STATUS_ACTIONS]}
+      onChanged={onChanged}
     />
   );
 }
 
-export function ContactRowActions({ id }: { id: string }) {
+export function ContactRowActions({
+  id,
+  onChanged,
+}: {
+  id: string;
+  onChanged?: () => void;
+}) {
   return (
     <RowActions
       id={id}
       statusEndpoint={`/api/dashboard/contact-requests/${id}/status`}
       statuses={[...CONTACT_STATUS_ACTIONS]}
+      onChanged={onChanged}
     />
   );
 }
@@ -185,6 +195,7 @@ export function ToggleFieldButton({
   value,
   activeTitle = "Désactiver",
   inactiveTitle = "Activer",
+  onChanged,
 }: {
   /** Ressource API, ex. "circuits" → PATCH /api/dashboard/circuits/[id]. */
   resource: string;
@@ -194,8 +205,9 @@ export function ToggleFieldButton({
   value: boolean;
   activeTitle?: string;
   inactiveTitle?: string;
+  /** Callback de rafraîchissement de la liste après la mutation. */
+  onChanged?: () => void;
 }) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -212,7 +224,7 @@ export function ToggleFieldButton({
         setError(await readApiError(response));
         return;
       }
-      router.refresh();
+      onChanged?.();
     } catch {
       setError("Erreur réseau");
     } finally {

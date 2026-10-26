@@ -4,8 +4,7 @@ import { WhatsAppButton } from "@/components/common/whatsapp-button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getCircuitBySlug } from "@/lib/services/circuits";
-import { toCircuitVM } from "@/lib/view-models";
+import { getCircuit, getCircuitSlugs } from "@/lib/content";
 import { Clock, MapPin, Check, X } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -16,32 +15,43 @@ interface CircuitPageProps {
   }>;
 }
 
+// Export statique : seuls les slugs générés au build existent (une page
+// HTML par circuit) — dynamicParams=false sinon le build échoue.
+export const dynamicParams = false;
+
+export async function generateStaticParams() {
+  const slugs = await getCircuitSlugs();
+  // Export statique : Next refuse un tableau vide (au moins une route
+  // générée). Sentinelle "_" si le contenu est indisponible au build
+  // (CI sans APP_URL, API coupée) : la page rend alors not-found, aucun
+  // contenu fictif n'est pas publié.
+  return slugs.length > 0 ? slugs.map((slug) => ({ slug })) : [{ slug: "_" }];
+}
+
 export async function generateMetadata({
   params,
 }: CircuitPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const record = await getCircuitBySlug(slug);
-  if (!record) return {};
+  const circuit = await getCircuit(slug);
+  if (!circuit) return {};
   return {
-    title: `${record.title} - Wonder Tours and Services`,
-    description: record.description ?? undefined,
+    title: `${circuit.title} - Wonder Tours and Services`,
+    description: circuit.description || undefined,
   };
 }
 
 export default async function CircuitPage({ params }: CircuitPageProps) {
   const { slug } = await params;
-  const record = await getCircuitBySlug(slug);
+  const circuit = await getCircuit(slug);
 
-  if (!record) {
+  if (!circuit) {
     notFound();
   }
-
-  const circuit = toCircuitVM(record);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1">
         {/* Hero Gallery */}
         <section className="relative h-[60vh] min-h-[400px]">

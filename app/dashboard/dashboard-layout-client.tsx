@@ -2,30 +2,67 @@
 
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Header } from "@/components/dashboard/header";
-import { useState } from "react";
-import { usePathname } from "next/navigation";
-import type { Session } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "@/lib/api-client";
 
+// Pages d'authentification : sans chrome ET sans garde (la connexion
+// elle-même doit rester accessible sans session).
+const AUTH_PAGES = [
+  "/dashboard/login",
+  "/dashboard/forgot-password",
+  "/dashboard/reset-password",
+];
+
+/**
+ * Chrome du dashboard (sidebar + header) et garde de session côté
+ * client : GET /api/auth/me au montage.
+ *
+ * - pas de session (401) → /dashboard/login ;
+ * - /dashboard/users* hors admin → /dashboard (miroir de l'ancien
+ *   proxy.ts ; l'API répond de toute façon 403 aux non-admins) ;
+ * - pages d'auth : rendues sans chrome ni garde.
+ *
+ * L'autorisation réelle reste côté API PHP — chaque requête dashboard
+ * y est re-vérifiée via le cookie wt_session.
+ */
 export function DashboardLayoutClient({
   children,
-  session,
 }: {
   children: React.ReactNode;
-  /** Session lue côté serveur (layout.tsx) — toujours absente sur /dashboard/login. */
-  session: Session | null;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { session, loading } = useSession();
 
-  // Les pages d'authentification (connexion, mot de passe oublié,
-  // réinitialisation) s'affichent sans chrome (sidebar/header).
-  const AUTH_PAGES = [
-    "/dashboard/login",
-    "/dashboard/forgot-password",
-    "/dashboard/reset-password",
-  ];
-  if (AUTH_PAGES.includes(pathname)) {
+  const isAuthPage = AUTH_PAGES.includes(pathname);
+
+  useEffect(() => {
+    if (loading || isAuthPage) return;
+    if (!session) {
+      router.replace("/dashboard/login");
+      return;
+    }
+    // Gestion des comptes : admin uniquement.
+    if (session.role !== "admin" && pathname.startsWith("/dashboard/users")) {
+      router.replace("/dashboard");
+    }
+  }, [loading, isAuthPage, session, pathname, router]);
+
+  if (isAuthPage) {
     return <>{children}</>;
+  }
+
+  if (loading || !session) {
+    // Garde en cours (ou redirection imminente) : ni chrome ni contenu.
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <p className="text-gray-500" role="status">
+          Chargement…
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -44,7 +81,7 @@ export function DashboardLayoutClient({
         transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <Sidebar onClose={() => setSidebarOpen(false)} role={session?.role} />
+        <Sidebar onClose={() => setSidebarOpen(false)} role={session.role} />
       </div>
 
       {/* Main content */}

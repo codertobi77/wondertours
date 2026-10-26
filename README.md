@@ -1,12 +1,12 @@
 # Wonder Tours and Services
 
-> Site web officiel de l'agence de voyage **Wonder Tours and Services** (Ouidah, Bénin) : vitrine bilingue français / anglais, tableau de bord d'administration et API REST — construits avec Next.js 16.
+> Site web officiel de l'agence de voyage **Wonder Tours and Services** (Ouidah, Bénin) : vitrine bilingue français / anglais, tableau de bord d'administration et API REST — frontend Next.js 16 exporté en statique + API PHP 8 sans dépendance.
 
 [![CI](https://github.com/codertobi77/wondertours/actions/workflows/ci.yml/badge.svg)](https://github.com/codertobi77/wondertours/actions/workflows/ci.yml)
 
-- **Production** : https://wondertourswebsite.vercel.app
+- **Production** : https://wondertoursandservices.com (LWS — frontend statique + API PHP) ; repli/historique : https://wondertourswebsite.vercel.app
 - **Dépôt** : https://github.com/codertobi77/wondertours (branche `master`)
-- **Documentation** : [`docs/api.md`](docs/api.md) (API), [`env-setup.md`](docs/env-setup.md) (variables d'environnement), [`deployment.md`](docs/deployment.md) (Vercel), [`deployment-lws.md`](docs/deployment-lws.md) (LWS/cPanel)
+- **Documentation** : [`docs/api.md`](docs/api.md) (API), [`env-setup.md`](docs/env-setup.md) (variables d'environnement), [`deployment-lws.md`](docs/deployment-lws.md) (LWS — production), [`deployment.md`](docs/deployment.md) (Vercel — historique)
 
 ## Présentation
 
@@ -14,7 +14,7 @@
 
 - **Le site vitrine public** — présente l'agence, ses services, ses destinations et ses circuits touristiques ; publie des articles de blog et des témoignages de voyageurs ; et permet aux visiteurs de demander un devis via le formulaire de contact ou de réserver directement en ligne.
 - **Le tableau de bord d'administration** (`/dashboard`) — back-office complet qui permet à l'équipe de gérer tout le contenu du site (circuits, blog, témoignages…), les réservations et demandes de contact reçues, la médiathèque et les comptes utilisateurs, avec trois niveaux d'accès (admin, éditeur, lecteur).
-- **L'API REST** (`app/api`) — consommée à la fois par le site public et par le dashboard : contenus publics en lecture, CRUD complet protégé par session.
+- **L'API REST** (`php-api/` — PHP 8, zéro dépendance) — consommée par le site public (fetch au build) et par le dashboard : contenus publics en lecture, CRUD complet protégé par session. Le frontend Next.js est exporté en site statique et appelle l'API en same-origin `/api/*`.
 
 ## Fonctionnalités
 
@@ -49,52 +49,57 @@ Huit templates HTML (`lib/services/mail-templates.ts`) : accusé de réception c
 | Couche | Technologie |
 |--------|-------------|
 | Framework | Next.js 16 (App Router, React 19, Turbopack) |
-| Langage | TypeScript (strict) |
+| Langage | TypeScript (strict) — API PHP 8 sans framework |
 | Base de données | PostgreSQL (Aiven en production, locale en dev) |
-| ORM | Prisma 7 (driver adapter `@prisma/adapter-pg`) |
-| Validation | Zod 4 |
-| Authentification | jose (JWT) + bcrypt |
+| ORM / migrations | Prisma 7 (driver adapter `@prisma/adapter-pg`) ; l'API PHP interroge la base en PDO |
+| Validation | Zod 4 (front, tests) — contrat répliqué côté PHP (`php-api/lib/Validator.php`) |
+| Authentification | JWT HS256 (cookie `wt_session`) + bcrypt — sessions interchangeables entre stacks |
 | UI | Tailwind CSS 4, framer-motion, lucide-react |
-| Emails | Resend |
+| Emails | Resend (cURL côté PHP) |
 | Services externes | DeepL (traduction), imgBB (images) |
 | Tests | Bun test |
-| Runtime / paquets | Bun |
-| CI/CD | GitHub Actions (Vercel, bundle LWS) |
-| Hébergement | Vercel (+ LWS/cPanel en préparation) |
+| Runtime / paquets | Bun (build, dev, tests) — PHP ≥ 8.1 en production |
+| CI/CD | GitHub Actions : CI (lint/test/build) + déploiement FTP vers LWS (lftp) |
+| Hébergement | LWS Perso (frontend statique + API PHP) ; Vercel (historique, repli) |
 
 ## Architecture backend
 
-Le backend suit une architecture en couches : **route handler → service → Prisma → PostgreSQL**.
+En production, le backend est l'**API PHP** `php-api/` : le frontend Next.js est exporté en statique (`output: "export"` → `out/`, servi par Apache) et consomme l'API en same-origin `/api/*`. La stack Node/Prisma reste l'**outillage** : migrations, seed, tests.
 
 ```
-app/api/**/route.ts          Route handlers (Next.js) — HTTP seulement
+php-api/index.php            Front controller — routeur /api/* (39 routes)
         │
         ▼
-lib/services/*.ts            Couche services — logique métier, requêtes Prisma
+php-api/handlers/*.php       Handlers HTTP — PublicApi, AuthApi, DashboardApi
+                             (CRUD générique 7 ressources), Bookings, Contact,
+                             Media, Settings, Stats, Translate, Users
         │
         ▼
-lib/db.ts                    Client Prisma singleton (pool pg plafonné) + ré-exports
+php-api/lib/*.php            Fondations — Db (PDO pgsql), Auth/Jwt (HS256),
+                             Validator (contrat Zod répliqué), External
+                             (Resend/DeepL/imgBB via cURL), Serial (camelCase)
         │
         ▼
-PostgreSQL (Aiven / local)
+PostgreSQL (Aiven)
 ```
 
 ### Couches
 
-- **`app/api/**/route.ts`** — Route handlers Next.js. Valident l'entrée avec des schémas **Zod** (`parseQuery` / `parseBody` de `lib/api/utils.ts`), appellent un service et renvoient du JSON via les helpers `ok`, `created`, `badRequest`, `notFound`, `conflict`… Ils ne contiennent aucune logique métier.
-- **`lib/services/*.ts`** — Logique métier et accès aux données : un module par domaine (`circuits`, `destinations`, `bookings`, `contact-requests`, `blog`, `testimonials`, `categories`, `services`, `settings`, `stats`, `media`, `users`, `password-reset`), complétés par les clients externes `imgbb` (hébergement d'images), `deepl` (traduction) et `mailer` (emails transactionnels Resend — templates dans `mail-templates.ts`). Les services construisent les `where` Prisma (filtres, pagination) et retournent des types inférés.
-- **`lib/db.ts`** — Client Prisma en singleton (pattern `globalThis` pour le hot-reload en dev) construit sur l'adapter driver `@prisma/adapter-pg`. Ré-exporte les types du modèle (`User`, `Circuit`…).
-- **`lib/pg-adapter.ts`** — Construction partagée (app + seed) de l'adapter pg : TLS Aiven (`sslmode` neutralisé), retrait des paramètres Prisma 6 ignorés par node-pg (`connection_limit`, `pool_timeout`) et plafond de connexions serveur `DATABASE_POOL_MAX` (défaut 2) — le plan Aiven Hobbyist n'offre que ~5 slots applicatifs (`max_connections=20`, dont 3 réservés aux superusers et ~13 consommés par les workers Aiven).
-- **`lib/api/utils.ts`** — Helpers transverses : schémas de pagination, réponses JSON normalisées (y compris sérialisation BigInt), mapping d'erreurs Prisma (`P2002` → 409, `P2025` → 404, `P2003` → 400) via l'enveloppe `handleRoute`.
-- **`prisma/schema.prisma`** — Schéma de 13 tables : `users`, `destinations`, `categories`, `circuits`, `testimonials`, `blog_categories`, `blog_posts`, `services`, `bookings`, `contact_requests`, `settings`, `media_library`, `password_reset_tokens` (+ 6 enums : rôle, difficulté, type/statut de réservation, type de demande, statut de contact). Client généré dans `lib/generated/prisma` (gitignoré).
+- **`php-api/index.php` + `lib/Router.php`** — front controller unique : Apache route toute requête `/api/*` non-fichier vers `index.php` (`.htaccess`), le routeur dispatche vers les handlers. En dev : `php -S 127.0.0.1:8099 router-dev.php`.
+- **`php-api/handlers/*.php`** — HTTP seulement : valident l'entrée avec `Validator`, appellent la couche modèle et renvoient du JSON via `Http` (`ok`, `created`, `badRequest`, `notFound`, `conflict`…). Le CRUD des 7 ressources de contenu passe par le générique `lib/Crud.php`.
+- **`php-api/lib/`** — fondations maison, **aucune dépendance Composer** : `Db` (PDO, requêtes préparées, session UTC, mapping d'erreurs PostgreSQL : 23505 → 409, 23503 → 400, ligne absente → 404), `Auth` + `Jwt` (sessions HS256 dans le cookie `wt_session`, `password_verify` compatible bcryptjs), `Validator` (réplique des schémas Zod : trim/min/max/uuid/enum, defaults au create, PATCH sans ré-application), `External` (Resend, DeepL, imgBB via cURL), `Serial` (camelCase, BigInt en chaîne), `Slug`, `Env` (config : `config.local.php` → getenv → défauts).
+- **Rôles** — équivalent de l'ancien `handleProtectedRoute` : 401 sans session, 403 si rôle insuffisant (lecture pour tous les rôles, écritures admin+éditeur, `users/**` admin).
+- **`prisma/schema.prisma`** — Schéma de 13 tables : `users`, `destinations`, `categories`, `circuits`, `testimonials`, `blog_categories`, `blog_posts`, `services`, `bookings`, `contact_requests`, `settings`, `media_library`, `password_reset_tokens` (+ 6 enums). Client généré dans `lib/generated/prisma` (gitignoré). **Les migrations restent gérées par Prisma** — `prisma migrate deploy` s'exécute en CI avant chaque déploiement ; le PHP n'en fait aucune.
+- **`lib/services/*.ts` + `lib/db.ts`** — couche Node historique (un module par domaine + clients externes `imgbb`, `deepl`, `mailer`), toujours utilisée par les **tests** (`bun test` sur PostgreSQL éphémère) et le **seed** (`bun run db:seed`). Le contrat API reste donc vérifié par cette même couche métier, et le smoke (`scripts/smoke-api.sh`) le re-vérifie de bout en bout contre l'API PHP.
 
 ### TLS PostgreSQL (important)
 
-Prisma 7 se connecte via le driver `pg` (node-postgres), dont la sémantique `sslmode` diffère de libpq : `sslmode=require` dans l'URI produit un `ssl={}` **vérifiant strictement** la chaîne de certificats, ce qui échoue avec la CA managée Aiven (`self signed certificate in certificate chain`). `lib/pg-adapter.ts` retire donc `sslmode` de l'URI et fixe `ssl: { rejectUnauthorized: false }` (chiffrement sans vérification, conforme libpq).
+- **Côté PHP (production)** : PDO pgsql gère `sslmode=require` nativement (libpq) — l'URI Aiven est utilisée telle quelle (`php-api/lib/Db.php`, fuseau de session forcé en UTC).
+- **Côté Node (tests, seed, migrations)** : Prisma 7 se connecte via le driver `pg`, dont la sémantique `sslmode` diffère de libpq (`sslmode=require` produirait une vérification stricte de la chaîne, qui échoue avec la CA managée Aiven). `lib/pg-adapter.ts` retire donc `sslmode` de l'URI et fixe `ssl: { rejectUnauthorized: false }` (chiffrement sans vérification, conforme libpq).
 
 ### Pool de connexions (important)
 
-Le plan Aiven Hobbyist plafonne `max_connections` à 20 : 3 slots réservés aux superusers, ~13 consommés par les workers Aiven (pg_cron, TimescaleDB, management-agent…) — soit **~5 slots réellement disponibles**, partagés par tous les clients de la base (Vercel, standalone LWS, seed, psql). `lib/pg-adapter.ts` plafonne donc le pool node-pg à `DATABASE_POOL_MAX` connexions par process (défaut 2, échec propre `P2024` après ~10 s si saturé) et retire de l'URI les paramètres `connection_limit` / `pool_timeout` (sémantique Prisma 6 que le driver adapter ignore — sans plafond explicite, node-pg monte à 10 connexions par pool → `P2037 Too many connections`).
+Le plan Aiven Hobbyist plafonne `max_connections` à 20 : 3 slots réservés aux superusers, ~13 consommés par les workers Aiven (pg_cron, TimescaleDB, management-agent…) — soit **~5 slots réellement disponibles**, partagés par tous les clients de la base (API PHP LWS, tests/seed, psql). Côté Node, `lib/pg-adapter.ts` plafonne le pool à `DATABASE_POOL_MAX` (défaut 2, échec propre après ~10 s si saturé) et retire de l'URI les paramètres `connection_limit` / `pool_timeout`. Côté PHP, la connexion PDO est conservée statiquement par process — un worker garde sa connexion entre requêtes (cf. `docs/deployment-lws.md` §6 si des `too many connections` apparaissent).
 
 ### Endpoints API
 
@@ -110,20 +115,22 @@ Publics :
 | GET | `/api/testimonials` | Témoignages vérifiés |
 | GET | `/api/blog` | Articles publiés, paginés |
 | GET | `/api/blog/[slug]` | Détail d'un article |
-| POST | `/api/contact` | Créer une demande de contact (validation Zod) |
+| GET | `/api/blog-categories` | Catégories du blog actives |
+| GET | `/api/settings` | Paramètres publics du site |
+| POST | `/api/contact` | Créer une demande de contact (validation) |
 | POST | `/api/bookings` | Créer une réservation (référence `WT-XXXXXX`) |
 
 Dashboard (**authentification requise** — cf. ci-dessous) : `/api/dashboard/{circuits,destinations,categories,testimonials,services,blog,blog-categories,bookings,contact-requests,settings,stats,media,users}` avec CRUD complet (GET/POST, `…/[id]` GET/PATCH/DELETE), `…/bookings/[id]/status`, `…/contact-requests/[id]/status` et `POST …/translate` (traduction DeepL, admin+éditeur).
 
-Authentification : `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`.
+Authentification : `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, `GET /api/auth/me` (session courante — garde client du frontend statique).
 
 ### Authentification dashboard
 
-Sessions JWT (jose) signées avec `AUTH_SECRET`, stockées dans le cookie httpOnly `wt_session` (7 jours).
+Sessions JWT HS256 signées avec `AUTH_SECRET`, stockées dans le cookie httpOnly `wt_session` (7 jours) — mêmes jetons côté PHP et côté Node (outillage).
 
-- les routes `/api/dashboard/**` passent par `handleProtectedRoute` (lib/api/utils.ts) : 401 sans session, 403 si le rôle est insuffisant — GET du contenu pour tous les rôles, écritures pour admin+editor, gestion des comptes (`users/**`) réservée à admin ;
-- `proxy.ts` (Next 16 : middleware renommé « proxy ») protège les pages `/dashboard/**` : sans session → redirection vers `/dashboard/login` ; `/dashboard/users**` → admin uniquement (double contrôle : redirection proxy + re-vérification serveur dans la page via `getSession()`, lib/session.ts) ;
-- l'UI reflète le rôle : l'entrée « Utilisateurs » de la sidebar n'apparaît que pour l'admin, le header affiche le nom/email/rôle de la session ;
+- chaque route `/api/dashboard/**` de l'API PHP vérifie session et rôle (`Auth::requireSession`) : 401 sans session, 403 si rôle insuffisant — lecture pour tous les rôles, écritures admin+éditeur, gestion des comptes (`users/**`) réservée à l'admin ;
+- **frontend statique** : les pages `/dashboard/**` sont gardées côté client — `/api/auth/me` répond 401 sans session → redirection vers `/dashboard/login` ; l'UI reflète le rôle (entrée « Utilisateurs » de la sidebar réservée à l'admin) ;
+- **l'autorisation réelle vit dans l'API PHP** : chaque route `/api/dashboard/**` vérifie session et rôle (401/403) — le garde client n'est qu'ergonomique, jamais une barrière de sécurité ;
 - le seed crée **deux comptes** depuis `.env` : l'admin (`ADMIN_EMAIL` / `ADMIN_PASSWORD`) et un éditeur (`EDITOR_EMAIL` / `EDITOR_PASSWORD`) — idempotent, le mot de passe n'est posé qu'à la création. L'admin crée ensuite d'autres comptes (admin, éditeur ou lecteur) depuis `/dashboard/users/new`.
 
 Le seed (`prisma/seed.ts`) alimente la base depuis les données statiques du site (`lib/data/`, `lib/constants`) par upserts — **rejouable** sans duplication.
@@ -132,7 +139,7 @@ Le seed (`prisma/seed.ts`) alimente la base depuis les données statiques du sit
 
 | Variable | Où | Description |
 |----------|-----|-------------|
-| `DATABASE_URL` | `.env` (local), `.env.prod`, Vercel (Production) | URI PostgreSQL. Local : `postgres://…` (sans ssl). Aiven : `postgres://…?sslmode=require` (le paramètre est neutralisé au runtime, cf. TLS). |
+| `DATABASE_URL` | `.env` (local), secret GitHub (déploiement LWS), Vercel | URI PostgreSQL. Local : `postgres://…` (sans ssl). Aiven : `postgres://…?sslmode=require` (neutralisée côté Node, native côté PHP, cf. TLS). |
 | `DATABASE_POOL_MAX` | optionnelle | Plafond de connexions serveur par process (défaut 2). À laisser faible : Aiven Hobbyist n'offre que ~5 slots applicatifs, partagés entre tous les clients de la base. |
 | `AUTH_SECRET` | `.env`, Vercel (Production) | Secret de signature des sessions JWT du dashboard (`openssl rand -base64 32`). **Requis** pour l'authentification. |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `.env` | Compte administrateur initial créé par le seed (le mot de passe n'est posé qu'à la création). |
@@ -141,7 +148,9 @@ Le seed (`prisma/seed.ts`) alimente la base depuis les données statiques du sit
 | `IMGBB_API_KEY` | `.env`, Vercel (Production) | Optionnelle — stockage distant imgBB pour la médiathèque. **Recommandée en prod** (FS Vercel en lecture seule) ; sans elle, fallback local `public/uploads/` (non persistant). |
 | `DEEPL_API_KEY` | `.env`, Vercel (Production) | Optionnelle — active `POST /api/dashboard/translate` (bouton « Traduire en anglais » des formulaires du dashboard) ; sans elle, la route répond `503`. |
 | `RESEND_API_KEY` | `.env`, Vercel (Production) | Optionnelle — active les emails transactionnels via Resend (accusé de réception contact, confirmation/notification réservation, mot de passe oublié, bienvenue). Sans elle : envoi ignoré avec log, aucune requête n'échoue. |
-| `MAIL_FROM` / `MAIL_TEAM_EMAIL` / `APP_URL` | `.env` | Optionnelles — expéditeur (défaut `Wonder Tours <onboarding@resend.dev>`, domaine de test Resend), destinataires des notifications internes (défaut `contact@wondertoursandservices.com`), base des liens des emails (défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertoursandservices.com` ; local : `http://localhost:3000`). |
+| `MAIL_FROM` / `MAIL_TEAM_EMAIL` | `.env` | Optionnelles — expéditeur (défaut `Wonder Tours <onboarding@resend.dev>`, domaine de test Resend) et destinataires des notifications internes (défaut `contact@wondertoursandservices.com`). |
+| `APP_URL` | `.env`, secret GitHub (LWS) | URL publique du site — **API fetchée par les pages publiques au build de l'export statique** et base des liens des emails. Défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertoursandservices.com` ; en local : `http://localhost:8099` (API PHP). |
+| `DEV_API_URL` | optionnelle (dev) | Cible du proxy `/api/*` de `next dev` vers l'API PHP (défaut `http://127.0.0.1:8099`). |
 
 ### Modèle `.env` local
 
@@ -162,7 +171,7 @@ EDITOR_PASSWORD="<choisir un mot de passe>"
 # RESEND_API_KEY="re_xxxxxxxxxxxx"
 # MAIL_FROM="Wonder Tours <onboarding@resend.dev>"    # domaine de test : ne délivre que vers l'email du compte Resend
 # MAIL_TEAM_EMAIL="contact@wondertoursandservices.com"             # destinataires des notifications internes
-# APP_URL="http://localhost:3000"                      # base des liens insérés dans les emails (mot de passe oublié…)
+# APP_URL="http://localhost:8099"                      # API PHP locale : fetch des pages en dev + liens emails
 
 # ── Autres services — optionnels ──
 # IMGBB_API_KEY="xxx"                                  # médiathèque distante (sinon fallback public/uploads/)
@@ -170,7 +179,7 @@ EDITOR_PASSWORD="<choisir un mot de passe>"
 # NEXT_PUBLIC_SITE_URL="https://wondertoursandservices.com"        # métadonnées (metadataBase, canonicals)
 ```
 
-En production Vercel, requises : `DATABASE_URL`, `AUTH_SECRET` (+ `ADMIN_*` / `EDITOR_*` au premier seed) ; recommandées : `IMGBB_API_KEY` (uploads persistants), `RESEND_API_KEY` + `MAIL_FROM` (domaine vérifié Resend), `APP_URL` / `NEXT_PUBLIC_SITE_URL` sur le domaine final.
+En production **LWS**, les variables sont injectées par le workflow de déploiement depuis les secrets GitHub (`FTP_HOST`/`FTP_USER`/`FTP_PASSWORD`, `DATABASE_URL`, `AUTH_SECRET`, `APP_URL`, `ADMIN_*`, services optionnels — liste exacte : [`docs/deployment-lws.md`](docs/deployment-lws.md) §1.2). Côté Vercel (repli), requises : `DATABASE_URL`, `AUTH_SECRET` (+ `ADMIN_*` / `EDITOR_*` au premier seed) ; recommandées : `IMGBB_API_KEY`, `RESEND_API_KEY` + `MAIL_FROM` (domaine vérifié Resend), `APP_URL` / `NEXT_PUBLIC_SITE_URL` sur le domaine final.
 
 Les fichiers `.env*` et `.vercel/` sont gitignorés. Le client Prisma généré (`lib/generated/prisma`) est gitignoré et régénéré au `postinstall` (`prisma generate`) — donc pendant le build Vercel.
 
@@ -181,61 +190,54 @@ bun install                # installe + génère le client Prisma (postinstall)
 
 # Base de données locale (PostgreSQL)
 #   créez .env à partir du modèle de la section « Variables d'environnement »
+#   et APP_URL="http://localhost:8099" (API PHP locale)
 bun run db:migrate         # prisma migrate dev (crée/applique la migration)
 bun run db:seed            # upserts depuis les données statiques + comptes admin & éditeur
 
-bun run dev                # http://localhost:3000 → dashboard : /dashboard
-                           # (connexion : ADMIN_* ou EDITOR_* du .env)
+# API PHP (terminal 1) — elle sert /api/* en dev comme en production
+cd php-api
+cp config.example.php config.local.php   # renseigner database_url + auth_secret
+php -S 127.0.0.1:8099 router-dev.php
+
+# Frontend (terminal 2)
+bun run dev                # http://localhost:3000 — /api/* proxifié vers :8099
+                           # dashboard : /dashboard (connexion : ADMIN_* ou EDITOR_*)
 ```
 
-Autres commandes utiles : `bun run build`, `bun run lint`, `bun run test` (16 suites, 61 tests), `bun run db:studio` (Prisma Studio), `bash scripts/smoke-api.sh` (45 vérifications sur `localhost:3000` : endpoints publics, auth, rôles, dashboard).
+Autres commandes utiles : `bun run build` (export statique → `out/`), `bun run lint`, `bun run test` (15 suites), `bun run db:studio` (Prisma Studio), `bash scripts/smoke-api.sh [BASE_URL]` (contrat API + pages ; `SMOKE_API_ONLY=1` pour l'API seule — mode utilisé par le déploiement).
 
 ## Tests et qualité
 
-- **Tests unitaires** (`bun run test`) : 61 tests répartis en 16 suites couvrant les services (circuits, blog, réservations, contact, paramètres, statistiques…), l'authentification et les rôles, la réinitialisation de mot de passe, les templates d'emails, les clients externes (imgBB, DeepL) et la slugification ;
-- **Smoke test HTTP de bout en bout** : `bash scripts/smoke-api.sh` — 45 vérifications sur `localhost:3000` (32 sur la prod) ;
-- **CI GitHub Actions** à chaque push `master` et chaque PR : lint, `next typegen` + typecheck, tests sur un PostgreSQL 16 éphémère (migrations + seed, aucune clé externe requise), build et vérification du bundle standalone ;
+- **Tests unitaires** (`bun run test`) : 15 suites couvrant la couche métier Node (circuits, blog, réservations, contact, paramètres, statistiques…), l'authentification et les rôles, la réinitialisation de mot de passe, les templates d'emails, les clients externes (imgBB, DeepL) et la slugification — la couche d'origine, qui définit le contrat que l'API PHP réplique ;
+- **Smoke test HTTP de bout en bout** : `bash scripts/smoke-api.sh [BASE_URL]` — contrat complet (publics, écritures, auth, rôles, dashboard) ; `SMOKE_API_ONLY=1` cible l'API seule (mode utilisé par le déploiement) ;
+- **CI GitHub Actions** à chaque push `master` et chaque PR : lint, `next typegen` + typecheck, tests sur un PostgreSQL 16 éphémère (migrations + seed, aucune clé externe requise), build statique + vérification des fichiers exportés. L'API PHP est validée par le smoke du workflow de déploiement (et localement : `php -l`, smoke contre `php -S`) ;
 - **TypeScript strict** (`strict: true`) : 0 erreur attendue au typecheck.
 
 ## Déploiement
 
-Le site tourne en production sur **Vercel** avec une base **PostgreSQL managée Aiven**. Procédure détaillée : [`docs/deployment.md`](docs/deployment.md).
+Le site est déployé en production sur **LWS** (frontend statique + API PHP, base PostgreSQL Aiven) par GitHub Actions à chaque merge vers `master`. L'hébergement **Vercel** reste déployé en parallèle comme repli. Procédures détaillées : [`docs/deployment-lws.md`](docs/deployment-lws.md) (LWS — production), [`docs/deployment.md`](docs/deployment.md) (Vercel — historique).
 
-Résumé :
+### LWS (production)
 
-1. **Base Aiven** — créer le service PostgreSQL (console Aiven, plan Hobbyist-1), récupérer le Service URI (`…?sslmode=require`) ;
-2. **Schéma + données** — depuis la machine locale :
-   ```bash
-   DATABASE_URL="<URI-aiven>" bunx prisma migrate deploy
-   DATABASE_URL="<URI-aiven>" bun run db:seed
-   ```
-3. **Vercel** — projet `wondertours_web_site` (team `amidala-samaris-projects`) :
-   ```bash
-   bunx vercel link                                          # une seule fois
-   echo "<URI-aiven>" | bunx vercel env add DATABASE_URL production
-   echo "<secret>"    | bunx vercel env add AUTH_SECRET production
-   echo "<clé-imgbb>" | bunx vercel env add IMGBB_API_KEY production  # optionnel : uploads persistants
-   echo "<clé-resend>" | bunx vercel env add RESEND_API_KEY production # optionnel : emails transactionnels
-   bunx vercel --prod
-   ```
-   Le build ne se connecte pas à la base (pages publiques en `force-dynamic`, API en route handlers) ; le client Prisma est régénéré au `postinstall`.
-4. **Vérification** — `bash scripts/smoke-api.sh https://wondertourswebsite.vercel.app` (32 vérifications ; supprime les lignes de test via psql, sinon purge manuelle) ;
-5. **Mises à jour** — nouvelle migration : `bun run db:migrate` en local → commit → `migrate deploy` sur Aiven → `bunx vercel --prod` (rollback : Deployments → *Promote to Production*).
+1. **Base Aiven** — service PostgreSQL (console Aiven, plan Hobbyist-1), Service URI `…?sslmode=require` ; schéma + seed appliqués (`prisma migrate deploy`, `bun run db:seed`) — déjà en place ;
+2. **Une seule fois** — créer les secrets GitHub du dépôt (accès FTP LWS, `DATABASE_URL`, `AUTH_SECRET`, `APP_URL`, `ADMIN_*`… — liste exacte : `docs/deployment-lws.md` §1.2) ;
+3. **Déploiement** — push vers `master` → CI verte → [`deploy-lws.yml`](.github/workflows/deploy-lws.yml) s'exécute automatiquement : migrations → génération de `php-api/config.local.php` → upload de l'API (lftp) → build statique → upload du frontend → smoke de prod. Déclenchement manuel possible (onglet *Actions*) ;
+4. **Vérification** — le smoke de prod (`SMOKE_API_ONLY=1`) couvre le contrat complet ; dashboard sur `/dashboard` (comptes de la base Aiven).
 
-> ⚠️ Si le CLI échoue en cours de déploiement avec `Error: fetch failed` pendant l'upload, supprimez le cache local (`rm -rf .next`) — les fichiers `.sst` volumineux du cache turbopack cassent l'upload — puis relancez.
+### Vercel (historique, repli partiel)
 
-### Hébergement LWS (cPanel mutualisé / Passenger)
-
-Un second hébergement **LWS** est préparé : bundle autonome (`output: "standalone"` dans `next.config.ts`) construit localement ou en CI, déployé via « Setup Node.js App » — aucun build ni `npm install` sur le serveur. La base reste **Aiven** dans un premier temps. Procédure complète : [`docs/deployment-lws.md`](docs/deployment-lws.md).
+Le mode Vercel (`VERCEL=1`) reste un build serveur. Depuis la migration, `app/api` n'existe plus : le site public y fetche l'API à `APP_URL` (fetch serveur, sans CORS) et fonctionne en lecture ; **dashboard et formulaires y sont indisponibles** (l'API n'y est plus servie en same-origin) — le repli complet passe par le DNS, cf. `docs/deployment-lws.md` §7.
 
 ```bash
-bash scripts/package-lws.sh --smoke   # build + tar.gz dans dist-lws/ + test local du bundle exact
+bunx vercel --prod          # rollback : Deployments → Promote to Production
 ```
+
+> ⚠️ Si le CLI échoue avec `Error: fetch failed` pendant l'upload, supprimez le cache local (`rm -rf .next`) — les fichiers `.sst` volumineux du cache turbopack cassent l'upload — puis relancez.
 
 ### CI/CD GitHub Actions
 
-- **CI** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) : à chaque push `master` et chaque PR — lint, typecheck, tests sur un PostgreSQL 16 éphémère (migrations + seed, aucune clé externe requise), build + vérification du bundle standalone.
-- **Package LWS** — [`.github/workflows/package-lws.yml`](.github/workflows/package-lws.yml) : manuel ou sur tag `lws-v*` — construit le tar.gz de déploiement, le publie en artefact (Release GitHub sur tag). L'upload vers cPanel reste manuel (pas d'accès SSH/API sur le mutualisé).
+- **CI** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) : à chaque push `master` et chaque PR — lint, typecheck, tests sur un PostgreSQL 16 éphémère (migrations + seed, aucune clé externe requise), build statique + vérification des fichiers exportés.
+- **Deploy LWS** — [`.github/workflows/deploy-lws.yml`](.github/workflows/deploy-lws.yml) : automatique après une CI verte sur `master`, ou manuel — migrations Aiven, génération de `config.local.php` depuis les secrets, upload lftp de l'API puis du frontend statique, smoke de production.
 
 ## Contribuer
 
@@ -245,6 +247,7 @@ Toute contribution est bienvenue : correction de bug, nouvelle fonctionnalité, 
 
 - **Bun ≥ 1.3** — installation, scripts et tests ([bun.sh](https://bun.sh)) ;
 - **Node.js ≥ 20** ;
+- **PHP ≥ 8.1** en local (API `php-api/` — ex. `sudo apt install php-cli php-pgsql`) ;
 - **PostgreSQL 16** en local (par exemple `docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=wondertours postgres:16`).
 
 ### Mise en place
@@ -258,13 +261,17 @@ bun install                # installe + génère le client Prisma (postinstall)
 # (seuls DATABASE_URL et AUTH_SECRET sont requis pour démarrer)
 bun run db:migrate         # applique les migrations
 bun run db:seed            # données du site + comptes admin & éditeur
-bun run dev                # http://localhost:3000
+
+# API PHP : créez php-api/config.local.php depuis config.example.php
+# (database_url + auth_secret), puis suivez « Démarrage local » :
+# terminal 1 : php -S 127.0.0.1:8099 router-dev.php (depuis php-api/)
+# terminal 2 : bun run dev → http://localhost:3000
 ```
 
 ### Workflow de contribution
 
 1. **Branche** — partez d'un `master` à jour : `git checkout -b feature/ma-fonctionnalite` (ou `fix/…`, `docs/…`) ;
-2. **Développement** — respectez l'architecture en couches (route handler → service → Prisma) et les conventions ci-dessous ;
+2. **Développement** — respectez l'architecture en couches (API PHP : handler → lib → PDO ; outillage Node : service → Prisma) et les conventions ci-dessous ;
 3. **Vérifications locales** :
    ```bash
    bun run lint             # 0 erreur attendue
@@ -277,7 +284,7 @@ bun run dev                # http://localhost:3000
 
 ### Conventions du projet
 
-- **TypeScript strict** partout ; validation systématique des entrées avec **Zod** (`parseBody` / `parseQuery`) ; aucune logique métier dans les route handlers ;
+- **TypeScript strict** partout ; **contrat API double-face** : les schémas Zod de la couche Node (testés par `bun test`) et leur réplique PHP (`php-api/lib/Validator.php`) doivent rester synchrones ; aucune logique métier dans les handlers (`php-api/handlers/`) ;
 - **Next.js 16** : cette version introduit des breaking changes par rapport aux versions antérieures (le middleware s'appelle « proxy », conventions App Router…) — consultez `node_modules/next/dist/docs/` avant d'utiliser une API incertaine ;
 - **Interface en français** ; le bilinguisme FR/EN passe par `lib/translations.ts` (statique) et les champs `*En` en base (traduction assistée DeepL) ;
 - **Services externes** : dégradation gracieuse obligatoire — sans clé (`IMGBB_API_KEY`, `DEEPL_API_KEY`, `RESEND_API_KEY`), la requête HTTP appelante ne doit jamais échouer (cf. `lib/services/imgbb.ts`, `deepl.ts`, `mailer.ts`) ;
@@ -299,4 +306,4 @@ bun run dev                # http://localhost:3000
 2. **Images placeholder** (`[PHOTO … À REMPLACER]`) à remplacer par de vraies images.
 3. **metadataBase** non défini (warning build) — définir `NEXT_PUBLIC_SITE_URL` sur le domaine final.
 4. **Suppression imgBB manuelle** : imgBB n'expose pas d'API de suppression — supprimer un média en dashboard retire la ligne de la médiathèque, mais l'image distante reste hébergée ; le `delete_url` conservé en base (`storagePath`) permet une suppression manuelle.
-5. **Média sans imgBB en prod** : sans `IMGBB_API_KEY`, la médiathèque retombe sur `public/uploads/`, non persistant sur Vercel — définir la clé (cf. « Variables d'environnement »).
+5. **Média sans imgBB** : sans `IMGBB_API_KEY`, la médiathèque retombe sur le dépôt local `uploads/` — **persistant sur LWS** (disque du mutualisé, servi sous `/uploads/`), non persistant sur Vercel (FS en lecture seule) ; imgBB reste recommandé pour des URLs stables entre hébergements (cf. « Variables d'environnement »).

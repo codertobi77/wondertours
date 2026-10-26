@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,27 +8,27 @@ import {
   MessageSquare,
   TrendingUp,
 } from "lucide-react";
-import {
-  getDashboardStats,
-  getRecentBookings,
-  getRecentContactRequests,
-} from "@/lib/services/stats";
+import { useApiData } from "@/lib/api-client";
+import { ErrorBlock, LoadingBlock } from "@/components/dashboard/api-state";
+import { formatDate, formatFcfa } from "@/lib/format";
+import type { ApiBooking, ApiContactRequest } from "@/lib/api-types";
 
-export const dynamic = "force-dynamic";
-
-/** Date ISO → "15 janv. 2024" (affichage compact FR). */
-function formatDate(date: Date | null): string {
-  if (!date) return "—";
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(date);
-}
-
-/** Montant avec séparateurs de milliers, ex. "1 250 000 FCFA". */
-function formatFcfa(amount: number): string {
-  return `${new Intl.NumberFormat("fr-FR").format(amount)} FCFA`;
+/**
+ * Agrégats + 5 dernières réservations/demandes, servis par
+ * GET /api/dashboard/stats (tout rôle authentifié).
+ */
+interface DashboardStats {
+  circuits: { total: number; active: number; featured: number };
+  bookings: {
+    total: number;
+    pending: number;
+    confirmed: number;
+    thisMonth: number;
+    revenueThisMonth: number;
+  };
+  contactRequests: { total: number; new: number; inProgress: number };
+  recentBookings: ApiBooking[];
+  recentContactRequests: ApiContactRequest[];
 }
 
 const BOOKING_STATUS_LABELS: Record<string, string> = {
@@ -43,12 +45,13 @@ const CONTACT_STATUS_LABELS: Record<string, string> = {
   closed: "Clôturée",
 };
 
-export default async function DashboardPage() {
-  const [stats, recentBookings, recentContactRequests] = await Promise.all([
-    getDashboardStats(),
-    getRecentBookings(5),
-    getRecentContactRequests(5),
-  ]);
+export default function DashboardPage() {
+  const { data: stats, error, loading } =
+    useApiData<DashboardStats>("/api/dashboard/stats");
+
+  if (loading) return <LoadingBlock />;
+  if (error) return <ErrorBlock message={error} />;
+  if (!stats) return <ErrorBlock message="Statistiques indisponibles." />;
 
   const cards = [
     {
@@ -112,10 +115,10 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentBookings.length === 0 && (
+              {stats.recentBookings.length === 0 && (
                 <p className="text-sm text-gray-500">Aucune réservation pour le moment.</p>
               )}
-              {recentBookings.map((booking) => (
+              {stats.recentBookings.map((booking) => (
                 <div
                   key={booking.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -158,10 +161,10 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentContactRequests.length === 0 && (
+              {stats.recentContactRequests.length === 0 && (
                 <p className="text-sm text-gray-500">Aucune demande de contact.</p>
               )}
-              {recentContactRequests.map((request) => (
+              {stats.recentContactRequests.map((request) => (
                 <div
                   key={request.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"

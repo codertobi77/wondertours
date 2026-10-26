@@ -1,6 +1,9 @@
 import { MetadataRoute } from "next";
 import { SITE_CONFIG } from "@/lib/constants";
 
+// `output: export` : les routes de métadonnées doivent être statiques.
+export const dynamic = "force-static";
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
