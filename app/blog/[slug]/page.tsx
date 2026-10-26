@@ -4,13 +4,8 @@ import { WhatsAppButton } from "@/components/common/whatsapp-button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  getBlogPostBySlug,
-  listBlogPosts,
-  listBlogCategories,
-  incrementBlogPostViews,
-} from "@/lib/services/blog";
-import { toBlogPostVM } from "@/lib/view-models";
+import { ViewCounter } from "@/components/common/view-counter";
+import { getBlogCategories, getBlogPost, getBlogPosts, getBlogSlugs } from "@/lib/content";
 import { Calendar, Clock, Share2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -22,60 +17,63 @@ interface BlogPostPageProps {
   }>;
 }
 
+// Export statique : une page HTML par article publié au build.
+export const dynamicParams = false;
+
+export async function generateStaticParams() {
+  return (await getBlogSlugs()).map((slug) => ({ slug }));
+}
+
 export async function generateMetadata({
   params,
 }: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const record = await getBlogPostBySlug(slug);
-  if (!record) return {};
+  const post = await getBlogPost(slug);
+  if (!post) return {};
   return {
-    title: `${record.title} - Wonder Tours and Services`,
-    description: record.excerpt ?? undefined,
+    title: `${post.title} - Wonder Tours and Services`,
+    description: post.excerpt || undefined,
   };
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
-  const record = await getBlogPostBySlug(slug);
+  const post = await getBlogPost(slug);
 
-  if (!record) {
+  if (!post) {
     notFound();
   }
 
-  // Compteur de vues.
-  await incrementBlogPostViews(record.id);
-  const post = toBlogPostVM(record);
+  // Le compteur de vues vit dans l'API PHP (GET /api/blog/{slug}) :
+  // une incrémentation au build (fetch mémoïsé) + une par visite via
+  // <ViewCounter> côté navigateur.
+  const [allPosts, categories] = await Promise.all([
+    getBlogPosts(),
+    getBlogCategories(),
+  ]);
 
-  // Articles similaires : même catégorie, en excluant l'article courant.
-  const relatedPage = await listBlogPosts({
-    published: true,
-    pageSize: 4,
-    ...(record.category && { categorySlug: record.category.slug }),
-  });
-  const related = relatedPage.items
-    .filter((p) => p.id !== post.id)
-    .slice(0, 3)
-    .map(toBlogPostVM);
+  // Articles similaires : même catégorie, hors article courant (3 max).
+  const related = allPosts
+    .filter(
+      (candidate) =>
+        candidate.categorySlug === post.categorySlug && candidate.id !== post.id
+    )
+    .slice(0, 3);
 
   // Données de la sidebar : articles récents + catégories avec compteurs.
-  const [sidebarPage, categoriesPage] = await Promise.all([
-    listBlogPosts({ published: true, pageSize: 100 }),
-    listBlogCategories({ active: true }),
-  ]);
-  const recentPosts = sidebarPage.items
-    .map(toBlogPostVM)
-    .filter((p) => p.id !== post.id)
+  const recentPosts = allPosts
+    .filter((candidate) => candidate.id !== post.id)
     .slice(0, 5);
   const categoryCounts = new Map<string, number>();
-  for (const item of sidebarPage.items) {
-    if (item.category) {
+  for (const item of allPosts) {
+    if (item.categorySlug) {
       categoryCounts.set(
-        item.category.slug,
-        (categoryCounts.get(item.category.slug) ?? 0) + 1
+        item.categorySlug,
+        (categoryCounts.get(item.categorySlug) ?? 0) + 1
       );
     }
   }
-  const sidebarCategories = categoriesPage.items.map((category) => ({
+  const sidebarCategories = categories.map((category) => ({
     id: category.id,
     name: category.name,
     slug: category.slug,
@@ -85,6 +83,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <ViewCounter slug={slug} />
 
       <main className="flex-1">
         {/* Hero */}

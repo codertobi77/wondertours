@@ -1,69 +1,88 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { useState } from "react";
+import { Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
 import { TestimonialsContent } from "@/components/testimonials/testimonials-content";
 import { useLanguage } from "@/contexts/language-context";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Testimonial } from "@/lib/data/testimonials";
 
 interface TestimonialsPageContentProps {
+  /** Tous les témoignages actifs, embarqués dans la page statique. */
   testimonials: Testimonial[];
   averageRating: number;
-  currentPage?: number;
-  totalPages?: number;
   totalTestimonials?: number;
+  /** Témoignages par page (6, comme l'ancien rendu serveur). */
+  pageSize?: number;
 }
 
 /**
- * Corps bilingue de la page "Témoignages" (stats, grille, CTA). Le rendu
- * serveur ne peut pas lire la locale (contexte client) : la page serveur
- * garde le fetch des données et délègue l'affichage à ce composant client.
+ * Corps bilingue de la page « Témoignages » (stats, grille, CTA). La page
+ * est statique : la pagination ?page= est gérée ici, côté client, sur la
+ * liste complète transmise par la page. useSearchParams exige une
+ * <Suspense> au-dessus (pré-rendu statique) — fournie par la page.
  */
 export function TestimonialsPageContent({
   testimonials,
   averageRating,
-  currentPage = 1,
-  totalPages = 1,
   totalTestimonials = testimonials.length,
+  pageSize = 6,
 }: TestimonialsPageContentProps) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const initialPage =
+    Number.parseInt(searchParams.get("page") ?? "1", 10) || 1;
+
+  const totalPages = Math.max(1, Math.ceil(testimonials.length / pageSize));
+  const [page, setPage] = useState<number>(
+    Math.min(Math.max(initialPage, 1), totalPages)
+  );
+  const currentPage = Math.min(page, totalPages);
+  const paged = testimonials.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   const handlePageChange = (newPage: number) => {
+    const clamped = Math.min(Math.max(newPage, 1), totalPages);
+    setPage(clamped);
     const params = new URLSearchParams(searchParams.toString());
-    params.set("page", newPage.toString());
-    router.push(`?${params.toString()}`);
+    if (clamped > 1) {
+      params.set("page", String(clamped));
+    } else {
+      params.delete("page");
+    }
+    const query = params.toString();
+    router.replace(query ? `?${query}` : window.location.pathname, { scroll: false });
   };
 
-  const getPageNumbers = () => {
-    const pages = [];
+  const getPageNumbers = (): (number | "...")[] => {
+    const pages: (number | "...")[] = [];
     const maxVisible = 5;
-    
+
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 4; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1);
+      pages.push("...");
+      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
     } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pages.push(i);
-        pages.push("...");
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push("...");
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
-      } else {
-        pages.push(1);
-        pages.push("...");
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-        pages.push("...");
-        pages.push(totalPages);
-      }
+      pages.push(1);
+      pages.push("...");
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
     }
     return pages;
   };
@@ -115,7 +134,7 @@ export function TestimonialsPageContent({
                 : "They traveled with Wonder Tours and Services"
             }
           />
-          <TestimonialsContent testimonials={testimonials} />
+          <TestimonialsContent testimonials={paged} />
           {testimonials.length === 0 && (
             <p className="text-center text-text-secondary py-12">
               {isFr
@@ -136,23 +155,23 @@ export function TestimonialsPageContent({
                 <ChevronLeft className="h-4 w-4" />
               </Button>
 
-              {getPageNumbers().map((page, index) => (
-                page === "..." ? (
+              {getPageNumbers().map((item, index) =>
+                item === "..." ? (
                   <span key={`ellipsis-${index}`} className="px-3 py-2 text-text-secondary">
                     ...
                   </span>
                 ) : (
                   <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
+                    key={item}
+                    variant={currentPage === item ? "default" : "outline"}
                     size="icon"
-                    onClick={() => handlePageChange(page as number)}
-                    className={currentPage === page ? "bg-amber-600 hover:bg-amber-700" : ""}
+                    onClick={() => handlePageChange(item)}
+                    className={currentPage === item ? "bg-amber-600 hover:bg-amber-700" : ""}
                   >
-                    {page}
+                    {item}
                   </Button>
                 )
-              ))}
+              )}
 
               <Button
                 variant="outline"

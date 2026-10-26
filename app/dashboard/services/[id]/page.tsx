@@ -1,32 +1,14 @@
-import { notFound } from "next/navigation";
-import { getServiceById } from "@/lib/services/services";
-import { ServiceForm } from "@/components/dashboard/forms/service-form";
+import EditClient from "./edit-client";
 
-export const dynamic = "force-dynamic";
-
-interface EditServicePageProps {
-  params: Promise<{ id: string }>;
+/**
+ * Coquille statique : identifiant réel lu côté client via useParams.
+ * Export statique -> page sentinelle "_" que le .htaccess sert pour
+ * tous les UUID (rewrite /dashboard/<res>/_.html).
+ */
+export function generateStaticParams() {
+  return [{ id: "_" }];
 }
 
-/** Édition d'un service existant : préremplit le formulaire partagé. */
-export default async function EditServicePage({ params }: EditServicePageProps) {
-  const { id } = await params;
-  const service = await getServiceById(id);
-  if (!service) notFound();
-
-  return (
-    <ServiceForm
-      initial={{
-        id: service.id,
-        title: service.title,
-        titleEn: service.titleEn,
-        description: service.description,
-        descriptionEn: service.descriptionEn,
-        icon: service.icon,
-        href: service.href,
-        sortOrder: service.sortOrder,
-        isActive: service.isActive,
-      }}
-    />
-  );
+export default function Page() {
+  return <EditClient />;
 }

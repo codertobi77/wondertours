@@ -1,10 +1,20 @@
-import { listCircuits } from "@/lib/services/circuits";
+"use client";
+
+import { useApiData } from "@/lib/api-client";
 import { TestimonialForm } from "@/components/dashboard/forms/testimonial-form";
+import { ErrorBlock, LoadingBlock } from "@/components/dashboard/api-state";
+import type { ApiCircuit, ApiPage } from "@/lib/api-types";
 
-export const dynamic = "force-dynamic";
+export default function NewTestimonialPage() {
+  const {
+    data: circuits,
+    error,
+    loading,
+  } = useApiData<ApiPage<ApiCircuit>>("/api/dashboard/circuits?pageSize=100");
 
-export default async function NewTestimonialPage() {
-  const circuits = await listCircuits({ pageSize: 100 });
+  if (loading) return <LoadingBlock />;
+  if (error) return <ErrorBlock message={error} />;
+  if (!circuits) return <LoadingBlock />;
 
   return (
     <TestimonialForm

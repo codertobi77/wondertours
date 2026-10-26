@@ -1,10 +1,10 @@
+import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppButton } from "@/components/common/whatsapp-button";
 import { LocalizedHero } from "@/components/common/localized-hero";
 import { BlogPageContent } from "@/components/blog/blog-page-content";
-import { listBlogPosts, listBlogCategories } from "@/lib/services/blog";
-import { toBlogPostVM } from "@/lib/view-models";
+import { getBlogCategories, getBlogPosts } from "@/lib/content";
 import { generateMetadata } from "@/lib/seo";
 
 export const metadata = generateMetadata({
@@ -13,27 +13,14 @@ export const metadata = generateMetadata({
   path: "/blog"
 });
 
-interface BlogPageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-export default async function BlogPage({ searchParams }: BlogPageProps) {
-  // Filtre via l'URL (?categorie=slug) ; la pagination reste côté client
-  // dans BlogGrid (6 articles par page).
-  const filters = await searchParams;
-  const categorySlug =
-    typeof filters.categorie === "string" ? filters.categorie : "";
-
-  const [postsPage, categoriesPage] = await Promise.all([
-    listBlogPosts({
-      published: true,
-      pageSize: 100,
-      ...(categorySlug && { categorySlug }),
-    }),
-    listBlogCategories({ active: true }),
+// Page statique : tous les articles publiés sont embarqués au build, le
+// filtre ?categorie= s'applique côté client dans BlogPageContent
+// (useSearchParams exige le <Suspense> ci-dessous).
+export default async function BlogPage() {
+  const [posts, categories] = await Promise.all([
+    getBlogPosts(),
+    getBlogCategories(),
   ]);
-  const posts = postsPage.items.map(toBlogPostVM);
-  const categories = categoriesPage.items;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -54,11 +41,9 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         />
 
         {/* Corps bilingue (catégories, articles, newsletter) */}
-        <BlogPageContent
-          categorySlug={categorySlug}
-          categories={categories}
-          posts={posts}
-        />
+        <Suspense fallback={null}>
+          <BlogPageContent categories={categories} posts={posts} />
+        </Suspense>
       </main>
 
       <Footer />

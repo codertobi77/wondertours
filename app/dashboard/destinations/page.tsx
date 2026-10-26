@@ -1,25 +1,25 @@
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, MapPin } from "lucide-react";
-import { listDestinations } from "@/lib/services/destinations";
+import { matchesQuery, useApiData } from "@/lib/api-client";
 import { RowActions, ToggleFieldButton } from "@/components/dashboard/row-actions";
 import { SearchInput } from "@/components/dashboard/search-input";
+import { ErrorBlock, LoadingBlock } from "@/components/dashboard/api-state";
+import type { ApiDestination, ApiPage } from "@/lib/api-types";
 
-export const dynamic = "force-dynamic";
+export default function DestinationsPage() {
+  const { data, error, loading, reload } = useApiData<ApiPage<ApiDestination>>(
+    "/api/dashboard/destinations?pageSize=100"
+  );
+  const [q, setQ] = useState("");
 
-interface DestinationsPageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-export default async function DestinationsPage({
-  searchParams,
-}: DestinationsPageProps) {
-  const filters = await searchParams;
-  const q = typeof filters.q === "string" ? filters.q : undefined;
-  const { items: destinations, total } = await listDestinations({
-    pageSize: 100,
-    q,
-  });
+  const destinations = (data?.items ?? []).filter((destination) =>
+    matchesQuery(q, destination.name, destination.country ?? "")
+  );
+  const total = data?.total ?? 0;
 
   return (
     <div className="space-y-6">
@@ -36,68 +36,78 @@ export default async function DestinationsPage({
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <SearchInput placeholder="Rechercher une destination…" />
-        </CardContent>
-      </Card>
+      {loading && <LoadingBlock />}
+      {error && <ErrorBlock message={error} />}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {destinations.length === 0 && (
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardContent className="p-8 text-center text-gray-500">
-              Aucune destination.
+      {!loading && !error && (
+        <>
+          {/* Recherche : filtre local sur la liste chargée. */}
+          <Card>
+            <CardContent className="p-4">
+              <SearchInput placeholder="Rechercher une destination…" value={q} onChange={setQ} />
             </CardContent>
           </Card>
-        )}
-        {destinations.map((destination) => (
-          <Card key={destination.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <MapPin className="w-6 h-6 text-primary" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {destinations.length === 0 && (
+              <Card className="md:col-span-2 lg:col-span-3">
+                <CardContent className="p-8 text-center text-gray-500">
+                  Aucune destination.
+                </CardContent>
+              </Card>
+            )}
+            {destinations.map((destination) => (
+              <Card key={destination.id}>
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <MapPin className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{destination.name}</h3>
+                        <p className="text-sm text-gray-600">
+                          {destination.region ?? destination.country ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-block px-2 py-1 text-xs rounded-full ${
+                        destination.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {destination.isActive ? "active" : "inactive"}
+                    </span>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{destination.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {destination.region ?? destination.country ?? "—"}
-                    </p>
+                  {destination.country && (
+                    <p className="text-sm text-gray-600 mb-4">{destination.country}</p>
+                  )}
+                  <div className="flex gap-2 items-center">
+                    <ToggleFieldButton
+                      resource="destinations"
+                      id={destination.id}
+                      value={destination.isActive}
+                      onChanged={reload}
+                    />
+                    <span className="flex-1" />
+                    <RowActions
+                      id={destination.id}
+                      resource="destinations"
+                      editHref={`/dashboard/destinations/${destination.id}`}
+                      enableDelete
+                      deleteLabel="Supprimer la destination"
+                      confirmMessage={`Supprimer la destination « ${destination.name} » ?`}
+                      onChanged={reload}
+                    />
                   </div>
-                </div>
-                <span
-                  className={`inline-block px-2 py-1 text-xs rounded-full ${
-                    destination.isActive
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {destination.isActive ? "active" : "inactive"}
-                </span>
-              </div>
-              {destination.country && (
-                <p className="text-sm text-gray-600 mb-4">{destination.country}</p>
-              )}
-              <div className="flex gap-2 items-center">
-                <ToggleFieldButton
-                  resource="destinations"
-                  id={destination.id}
-                  value={destination.isActive}
-                />
-                <span className="flex-1" />
-                <RowActions
-                  id={destination.id}
-                  resource="destinations"
-                  editHref={`/dashboard/destinations/${destination.id}`}
-                  enableDelete
-                  deleteLabel="Supprimer la destination"
-                  confirmMessage={`Supprimer la destination « ${destination.name} » ?`}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

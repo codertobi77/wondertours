@@ -1,13 +1,11 @@
+import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppButton } from "@/components/common/whatsapp-button";
 import { LocalizedHero } from "@/components/common/localized-hero";
 import { CircuitsCtaSection } from "@/components/circuits/circuits-cta-section";
 import { CircuitsExplorer } from "@/components/circuits/circuits-explorer";
-import { listCircuits } from "@/lib/services/circuits";
-import { listDestinations } from "@/lib/services/destinations";
-import { listCategories } from "@/lib/services/categories";
-import { toCircuitVM } from "@/lib/view-models";
+import { getCategories, getCircuits, getDestinations } from "@/lib/content";
 import { generateMetadata } from "@/lib/seo";
 
 export const metadata = generateMetadata({
@@ -16,41 +14,15 @@ export const metadata = generateMetadata({
   path: "/circuits"
 });
 
-interface CircuitsPageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-export default async function CircuitsPage({ searchParams }: CircuitsPageProps) {
-  // Filtre initial via l'URL (?category=slug), le filtrage interactif
-  // reste côté client dans le composant explorateur.
-  const filters = await searchParams;
-  const initialCategorySlug =
-    typeof filters.category === "string" ? filters.category : "";
-  const page = typeof filters.page === "string" ? parseInt(filters.page, 10) : 1;
-  const pageSize = 6;
-
-  const [circuitsPage, destinationsPage, categoriesPage] = await Promise.all([
-    listCircuits({ active: true, page, pageSize }),
-    listDestinations({ active: true }),
-    listCategories({ active: true }),
+// Page statique : tous les circuits actifs sont embarqués au build, le
+// filtrage (?category=, ?page=) et la pagination se font côté client dans
+// CircuitsExplorer (useSearchParams exige le <Suspense> ci-dessous).
+export default async function CircuitsPage() {
+  const [circuits, destinations, categories] = await Promise.all([
+    getCircuits(),
+    getDestinations(),
+    getCategories(),
   ]);
-
-  const circuits = circuitsPage.items.map(toCircuitVM);
-
-  // Le composant client filtre par nom de catégorie/destination : on
-  // transmet les slugs et noms pour la correspondance.
-  const categoryNames = new Map(
-    categoriesPage.items.map((c) => [c.slug, c.name])
-  );
-  const destinationNames = new Map(
-    destinationsPage.items.map((d) => [d.slug, d.name])
-  );
-
-  // Résout le paramètre ?category= vers le nom affiché ; "all" si absent
-  // ou inconnu (valeur neutre du composant client).
-  const initialCategoryName = initialCategorySlug
-    ? categoryNames.get(initialCategorySlug) ?? "all"
-    : "all";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -70,15 +42,20 @@ export default async function CircuitsPage({ searchParams }: CircuitsPageProps) 
           image="/photos_site wonder_tours/IMG_20240112_112544_4.jpg"
         />
 
-        {/* Filtres + grille (composant client) */}
-        <CircuitsExplorer
-          circuits={circuits}
-          categories={[...categoryNames.values()]}
-          destinations={[...destinationNames.values()]}
-          initialCategory={initialCategoryName}
-          currentPage={page}
-          totalPages={Math.ceil(circuitsPage.total / pageSize)}
-        />
+        {/* Filtres + grille (composant client, état initial depuis l'URL) */}
+        <Suspense fallback={null}>
+          <CircuitsExplorer
+            circuits={circuits}
+            categories={categories.map((category) => ({
+              name: category.name,
+              slug: category.slug,
+            }))}
+            destinations={destinations.map((destination) => ({
+              name: destination.name,
+              slug: destination.slug,
+            }))}
+          />
+        </Suspense>
 
         {/* CTA Section */}
         <CircuitsCtaSection />

@@ -1,35 +1,14 @@
-import { notFound, redirect } from "next/navigation";
-import { getUserById } from "@/lib/services/users";
-import { getSession } from "@/lib/session";
-import { UserForm } from "@/components/dashboard/forms/user-form";
+import EditClient from "./edit-client";
 
-export const dynamic = "force-dynamic";
-
-interface EditUserPageProps {
-  params: Promise<{ id: string }>;
+/**
+ * Coquille statique : identifiant réel lu côté client via useParams.
+ * Export statique -> page sentinelle "_" que le .htaccess sert pour
+ * tous les UUID (rewrite /dashboard/<res>/_.html).
+ */
+export function generateStaticParams() {
+  return [{ id: "_" }];
 }
 
-/** Édition d'un compte utilisateur : admin uniquement (double contrôle serveur). */
-export default async function EditUserPage({ params }: EditUserPageProps) {
-  const session = await getSession();
-  if (!session || session.role !== "admin") {
-    redirect("/dashboard");
-  }
-
-  const { id } = await params;
-  const user = await getUserById(id);
-  if (!user) notFound();
-
-  return (
-    <UserForm
-      initial={{
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        isActive: user.isActive,
-      }}
-    />
-  );
+export default function Page() {
+  return <EditClient />;
 }

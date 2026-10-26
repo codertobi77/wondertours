@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import imageCompression from "browser-image-compression";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,8 +11,7 @@ import { readApiError } from "@/components/dashboard/api-error";
 /** Bloc d'upload : image (≤ 5 Mo) + texte alternatif optionnel → POST /api/dashboard/media.
  * Les images raster sont d'abord compressées dans le navigateur (Phase 1b) :
  * 1920 px max, qualité ~0.82, ≤ 1.5 Mo — SVG et GIF passent tels quels. */
-export function MediaUploader() {
-  const router = useRouter();
+export function MediaUploader({ onChanged }: { onChanged?: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [altText, setAltText] = useState("");
   const [altTextEn, setAltTextEn] = useState("");
@@ -69,7 +67,7 @@ export function MediaUploader() {
       setAltText("");
       setAltTextEn("");
       setSuccess(true);
-      router.refresh();
+      onChanged?.();
     } catch {
       setError("Erreur réseau");
     } finally {
@@ -132,12 +130,13 @@ export function MediaAltTextEditor({
   id,
   altText,
   altTextEn,
+  onChanged,
 }: {
   id: string;
   altText: string | null;
   altTextEn: string | null;
+  onChanged?: () => void;
 }) {
-  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [fr, setFr] = useState(altText ?? "");
   const [en, setEn] = useState(altTextEn ?? "");
@@ -168,7 +167,7 @@ export function MediaAltTextEditor({
         return;
       }
       setEditing(false);
-      router.refresh();
+      onChanged?.();
     } catch {
       setError("Erreur réseau");
     } finally {
@@ -243,8 +242,15 @@ export function MediaAltTextEditor({
 }
 
 /** Actions d'une carte média : copier l'URL, supprimer (DELETE /api/dashboard/media/[id]). */
-export function MediaCardActions({ id, url }: { id: string; url: string }) {
-  const router = useRouter();
+export function MediaCardActions({
+  id,
+  url,
+  onChanged,
+}: {
+  id: string;
+  url: string;
+  onChanged?: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -271,7 +277,7 @@ export function MediaCardActions({ id, url }: { id: string; url: string }) {
         setError(await readApiError(response));
         return;
       }
-      router.refresh();
+      onChanged?.();
     } catch {
       setError("Erreur réseau");
     } finally {

@@ -335,6 +335,56 @@ final class PublicApi
         Http::ok($post);
     }
 
+    /**
+     * GET /api/blog-categories — actives, tri sortOrder puis nom
+     * (miroir de categories() sur la table blog_categories) : filtres de
+     * catégories du blog pour l'export statique du frontend.
+     */
+    public static function blogCategories(): never
+    {
+        $v = Validator::query();
+        $page = $v->page();
+        $pageSize = $v->pageSize();
+        $v->fail();
+
+        self::paged(
+            'SELECT t.* FROM blog_categories t',
+            'blog_categories t',
+            ['t.is_active = true', []],
+            't.sort_order ASC, t.name ASC',
+            $page,
+            $pageSize,
+            static fn (array $row): array => Serial::blogCategory($row)
+        );
+    }
+
+    /**
+     * GET /api/settings — paramètres publics pour l'export statique du
+     * frontend : liste blanche stricte (biographies du fondateur), rien
+     * d'autre de la table settings n'est exposé sans session. Enveloppe de
+     * pagination standard pour s'accorder aux lecteurs du frontend.
+     */
+    public static function settings(): never
+    {
+        $v = Validator::query();
+        $page = $v->page();
+        $pageSize = $v->pageSize();
+        $v->fail();
+
+        $whitelist = ['founder_bio_fr', 'founder_bio_en'];
+        $where = 't."key" IN (' . implode(', ', array_fill(0, count($whitelist), '?')) . ')';
+
+        self::paged(
+            'SELECT t.* FROM settings t',
+            'settings t',
+            [$where, $whitelist],
+            't."key" ASC',
+            $page,
+            $pageSize,
+            static fn (array $row): array => Serial::setting($row)
+        );
+    }
+
     // ─────────────────────────────── POST contact ───────────────────────────────
 
     /** POST /api/contact — crée la demande (statut new), 201 {message, id}. */

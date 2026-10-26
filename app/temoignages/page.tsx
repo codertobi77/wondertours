@@ -1,15 +1,11 @@
+import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppButton } from "@/components/common/whatsapp-button";
 import { LocalizedHero } from "@/components/common/localized-hero";
 import { TestimonialsPageContent } from "@/components/testimonials/testimonials-page-content";
-import { listTestimonials } from "@/lib/services/testimonials";
-import { toTestimonialVM } from "@/lib/view-models";
+import { getTestimonials } from "@/lib/content";
 import { generateMetadata } from "@/lib/seo";
-
-// Témoignages issus de la base : rendu dynamique pour refléter les
-// modifications du dashboard (sinon figé au build sur Vercel).
-export const dynamic = "force-dynamic";
 
 export const metadata = generateMetadata({
   title: "Témoignages - Wonder Tours and Services",
@@ -17,24 +13,16 @@ export const metadata = generateMetadata({
   path: "/temoignages"
 });
 
-interface TestimonialsPageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-export default async function TestimonialsPage({ searchParams }: TestimonialsPageProps) {
-  const filters = await searchParams;
-  const page = typeof filters.page === "string" ? parseInt(filters.page, 10) : 1;
-  const pageSize = 6;
-
-  const testimonialsPage = await listTestimonials({ active: true, page, pageSize });
-  const testimonials = testimonialsPage.items.map(toTestimonialVM);
+// Page statique : tous les témoignages actifs sont embarqués au build, la
+// pagination ?page= est gérée côté client dans TestimonialsPageContent
+// (useSearchParams exige le <Suspense> ci-dessous).
+export default async function TestimonialsPage() {
+  const testimonials = await getTestimonials();
 
   const averageRating =
     testimonials.length > 0
       ? testimonials.reduce((acc, t) => acc + t.rating, 0) / testimonials.length
       : 0;
-
-  const totalPages = Math.ceil(testimonialsPage.total / pageSize);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -55,13 +43,12 @@ export default async function TestimonialsPage({ searchParams }: TestimonialsPag
         />
 
         {/* Corps bilingue (stats, grille, CTA) */}
-        <TestimonialsPageContent
-          testimonials={testimonials}
-          averageRating={averageRating}
-          currentPage={page}
-          totalPages={totalPages}
-          totalTestimonials={testimonialsPage.total}
-        />
+        <Suspense fallback={null}>
+          <TestimonialsPageContent
+            testimonials={testimonials}
+            averageRating={averageRating}
+          />
+        </Suspense>
       </main>
 
       <Footer />

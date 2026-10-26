@@ -12,6 +12,11 @@ import type { Testimonial as StaticTestimonial } from "@/lib/data/testimonials";
 import type { CircuitWithRelations } from "@/lib/services/circuits";
 import type { BlogPostWithRelations } from "@/lib/services/blog";
 import type { Testimonial } from "@/lib/db";
+import type {
+  ApiBlogPost,
+  ApiCircuit,
+  ApiTestimonial,
+} from "@/lib/api-types";
 
 // ─────────────────────────────── Helpers ───────────────────────────────
 
@@ -59,14 +64,17 @@ function formatDurationEn(days: number | null | undefined): string {
 }
 
 /** Date ISO → "2024-01-15" (format des view-models statiques). */
-function toDateString(date: Date | null | undefined): string {
+function toDateString(date: Date | string | null | undefined): string {
   if (!date) return "";
-  return date.toISOString().slice(0, 10);
+  return new Date(date).toISOString().slice(0, 10);
 }
 
 // ─────────────────────────────── Circuits ───────────────────────────────
 
-export function toCircuitVM(circuit: CircuitWithRelations): StaticCircuit {
+export function toCircuitVM(
+  circuit: CircuitWithRelations | ApiCircuit
+): StaticCircuit {
+  const categories = circuit.categories ?? [];
   return {
     id: circuit.id,
     slug: circuit.slug,
@@ -74,8 +82,8 @@ export function toCircuitVM(circuit: CircuitWithRelations): StaticCircuit {
     titleEn: circuit.titleEn ?? undefined,
     destination: circuit.destination?.name ?? "Bénin",
     destinationEn: circuit.destination?.nameEn ?? undefined,
-    categories: circuit.categories.map((category) => category.name),
-    categoriesEn: circuit.categories.map(
+    categories: categories.map((category) => category.name),
+    categoriesEn: categories.map(
       (category) => category.nameEn ?? category.name
     ),
     duration: formatDuration(circuit.durationDays),
@@ -97,13 +105,16 @@ export function toCircuitVM(circuit: CircuitWithRelations): StaticCircuit {
 
 // ─────────────────────────────── Blog ───────────────────────────────
 
-export function toBlogPostVM(post: BlogPostWithRelations): StaticBlogPost {
+export function toBlogPostVM(
+  post: BlogPostWithRelations | ApiBlogPost
+): StaticBlogPost {
   return {
     id: post.id,
     slug: post.slug,
     title: post.title,
     titleEn: post.titleEn ?? undefined,
     category: post.category?.name ?? "Voyage",
+    categorySlug: post.category?.slug,
     categoryEn: post.category?.nameEn ?? undefined,
     excerpt: post.excerpt ?? "",
     excerptEn: post.excerptEn ?? undefined,
@@ -122,7 +133,9 @@ export function toBlogPostVM(post: BlogPostWithRelations): StaticBlogPost {
 
 // ─────────────────────────────── Témoignages ───────────────────────────────
 
-export function toTestimonialVM(testimonial: Testimonial): StaticTestimonial {
+export function toTestimonialVM(
+  testimonial: Testimonial | ApiTestimonial
+): StaticTestimonial {
   return {
     id: testimonial.id,
     name: testimonial.name,

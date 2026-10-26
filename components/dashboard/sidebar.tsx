@@ -72,7 +72,7 @@ export function Sidebar({ onClose, role }: SidebarProps) {
           <X className="w-5 h-5" />
         </button>
       </div>
-      <p className="text-xs md:text-sm text-gray-500 px-4 md:px-6 pb-3 md:pb-4">Panel d'administration</p>
+      <p className="text-xs md:text-sm text-gray-500 px-4 md:px-6 pb-3 md:pb-4">Panel d&apos;administration</p>
 
       {/* Navigation */}
       <nav className="flex-1 p-3 md:p-4 space-y-1 overflow-y-auto">

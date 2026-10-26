@@ -84,6 +84,12 @@ check "GET /api/blog" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/a
 BLOG_SLUG=$(curl -s "$BASE_URL/api/blog?pageSize=1" | python3 -c "import json,sys; print(json.load(sys.stdin)['items'][0]['slug'])")
 check "GET /api/blog/[slug]" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog/$BLOG_SLUG")"
 
+# Extensions pour l'export statique du frontend (pages publiques).
+check "GET /api/blog-categories" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog-categories")"
+SETTINGS_JSON=$(curl -s "$BASE_URL/api/settings")
+check "GET /api/settings" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/settings")"
+check_json "  liste blanche (clés autorisées uniquement)" "True" "$SETTINGS_JSON" "all(i['key'] in ('founder_bio_fr', 'founder_bio_en') for i in d['items'])"
+
 # ───────────────────── Écritures publiques ─────────────────────
 
 CONTACT_JSON=$(curl -s -X POST "$BASE_URL/api/contact" -H "Content-Type: application/json" \
@@ -116,6 +122,7 @@ if [ -z "${SMOKE_API_ONLY:-}" ]; then
   check "GET /dashboard sans session → redirection login" 307 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/dashboard")"
 fi
 check "GET /api/dashboard/users sans session" 401 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/dashboard/users")"
+check "GET /api/auth/me sans session → 401" 401 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/auth/me")"
 check "POST /api/auth/login mauvais mot de passe" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"mauvais\"}")"
 
 LOGIN_JSON=$(curl -s -c "$ADMIN_JAR" -X POST "$BASE_URL/api/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}")

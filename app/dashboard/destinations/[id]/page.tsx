@@ -1,34 +1,14 @@
-import { notFound } from "next/navigation";
-import { getDestinationById } from "@/lib/services/destinations";
-import { DestinationForm } from "@/components/dashboard/forms/destination-form";
+import EditClient from "./edit-client";
 
-export const dynamic = "force-dynamic";
-
-interface EditDestinationPageProps {
-  params: Promise<{ id: string }>;
+/**
+ * Coquille statique : identifiant réel lu côté client via useParams.
+ * Export statique -> page sentinelle "_" que le .htaccess sert pour
+ * tous les UUID (rewrite /dashboard/<res>/_.html).
+ */
+export function generateStaticParams() {
+  return [{ id: "_" }];
 }
 
-/** Édition d'une destination existante : préremplit le formulaire partagé. */
-export default async function EditDestinationPage({
-  params,
-}: EditDestinationPageProps) {
-  const { id } = await params;
-  const destination = await getDestinationById(id);
-  if (!destination) notFound();
-
-  return (
-    <DestinationForm
-      initial={{
-        id: destination.id,
-        name: destination.name,
-        nameEn: destination.nameEn,
-        description: destination.description,
-        descriptionEn: destination.descriptionEn,
-        country: destination.country,
-        region: destination.region,
-        imageUrl: destination.imageUrl,
-        isActive: destination.isActive,
-      }}
-    />
-  );
+export default function Page() {
+  return <EditClient />;
 }

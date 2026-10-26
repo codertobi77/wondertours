@@ -68,8 +68,25 @@ jobs:
       - name: Tests
         run: bun test
 
-      - name: "Build Next.js (output: standalone)"
+      - name: "Build Next.js (export statique → out/)"
+        # APP_URL="" désactive le fetch de contenu au build (cf. lib/content.ts)
+        # → repli lib/data/* : la CI ne dépend d'aucune API déployée.
+        env:
+          APP_URL: ""
         run: bun run build
 
-      - name: Vérifier le bundle standalone
-        run: test -f .next/standalone/server.js
+      - name: "Vérifier l'export statique"
+        # trailingSlash=false : chaque route est exportée en <route>.html
+        # (les dossiers du même nom ne contiennent que les payloads RSC en
+        # .txt, aucun index.html). La coquille sentinelle _.html couvre tous
+        # les UUID des pages d'édition dashboard (cf. .htaccess racine).
+        run: |
+          test -f out/index.html
+          test -f out/circuits.html
+          test -f out/blog.html
+          test -f out/dashboard.html
+          test -f out/dashboard/circuits/_.html
+          test -f out/sitemap.xml
+          test -f out/robots.txt
+          ls out/circuits/*.html >/dev/null
+          ls out/blog/*.html >/dev/null

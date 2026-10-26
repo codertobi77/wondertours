@@ -1,16 +1,11 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
 import { UserForm } from "@/components/dashboard/forms/user-form";
 
-export const dynamic = "force-dynamic";
-
-export default async function NewUserPage() {
-  // Gestion des comptes : admin uniquement, comme la page de liste
-  // (proxy.ts est la première ligne de défense).
-  const session = await getSession();
-  if (!session || session.role !== "admin") {
-    redirect("/dashboard");
-  }
-
+/**
+ * Gestion des comptes : admin uniquement. La garde client du layout
+ * dashboard redirige déjà les non-admins hors de /dashboard/users*, et
+ * l'API PHP répond 403 aux rôles non autorisés — pas de contrôle serveur
+ * nécessaire (le build statique ne le permet pas de toute façon).
+ */
+export default function NewUserPage() {
   return <UserForm />;
 }

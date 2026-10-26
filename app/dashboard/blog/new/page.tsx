@@ -1,10 +1,22 @@
-import { listBlogCategories } from "@/lib/services/blog";
+"use client";
+
+import { useApiData } from "@/lib/api-client";
 import { BlogPostForm } from "@/components/dashboard/forms/blog-post-form";
+import { ErrorBlock, LoadingBlock } from "@/components/dashboard/api-state";
+import type { ApiBlogCategory, ApiPage } from "@/lib/api-types";
 
-export const dynamic = "force-dynamic";
+export default function NewBlogPostPage() {
+  const {
+    data: categories,
+    error,
+    loading,
+  } = useApiData<ApiPage<ApiBlogCategory>>(
+    "/api/dashboard/blog-categories?pageSize=100"
+  );
 
-export default async function NewBlogPostPage() {
-  const categories = await listBlogCategories({ pageSize: 100 });
+  if (loading) return <LoadingBlock />;
+  if (error) return <ErrorBlock message={error} />;
+  if (!categories) return <LoadingBlock />;
 
   return (
     <BlogPostForm
