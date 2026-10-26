@@ -60,9 +60,10 @@ projet expose une route API dédiée — cf. ci-dessous.
 
 ## Intégration dashboard : `POST /api/dashboard/translate`
 
-Route réelle du projet : `app/api/dashboard/translate/route.ts`
-(admin + éditeur uniquement — `401`/`403` sinon, `503` si `DEEPL_API_KEY`
-absente). Elle s'appuie sur `translateTexts`.
+Route réelle du projet : `php-api/handlers/TranslateApi.php` (servie sous
+`/api/dashboard/translate` — admin + éditeur uniquement, `401`/`403` sinon,
+`503` si `DEEPL_API_KEY` absente). Elle s'appuie sur
+`External::translateTexts` (équivalent cURL de `translateTexts`).
 
 Requête — record `clé → texte` (1 à 20 entrées, valeurs
 ≤ 100 000 caractères) ; `sourceLocale` optionnel, `targetLocale` requis

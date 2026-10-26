@@ -6,7 +6,9 @@ namespace WT\Handlers;
 
 use WT\Circuits;
 use WT\Db;
+use WT\External;
 use WT\Http;
+use WT\MailTemplates;
 use WT\Model;
 use WT\Serial;
 use WT\Validator;
@@ -17,9 +19,8 @@ use WT\Validator;
  * témoignages, blog (+ compteur de vues), POST contact, POST bookings.
  *
  * Les emails Resend (confirmation visiteur + notification équipe) sont
- * « best effort » côté Next (sendEmailSafe, jamais bloquants) — ils
- * seront branchés ici sur External.php avec le port des gabarits
- * (MailTemplates) : cf. TODO e7e3ab3e.
+ * « best effort » (sendEmailSafe, jamais bloquants), exactement comme
+ * les routes Next d'origine : gabarits MailTemplates + External.
  */
 final class PublicApi
 {
@@ -402,6 +403,10 @@ final class PublicApi
         $v->fail();
         $data = $v->d();
 
+        $requestType = self::REQUEST_TYPE_MAPPING[$data['requestType'] ?? 'info'];
+        $phone = self::emptyToNull($data['phone'] ?? null);      // "" → null (|| null)
+        $subject = self::emptyToNull($data['subject'] ?? null);
+
         $id = Db::uuid();
         $now = self::now();
         Db::run(
@@ -412,9 +417,9 @@ final class PublicApi
                 $id,
                 $data['name'],
                 $data['email'],
-                self::emptyToNull($data['phone'] ?? null),      // "" → null (|| null)
-                self::emptyToNull($data['subject'] ?? null),
-                self::REQUEST_TYPE_MAPPING[$data['requestType'] ?? 'info'],
+                $phone,
+                $subject,
+                $requestType,
                 $data['travelDate'] ?? null,
                 $data['travelers'] ?? null,
                 $data['message'],
@@ -424,8 +429,33 @@ final class PublicApi
             ]
         );
 
-        // TODO (e7e3ab3e) : sendEmailSafe ×2 (confirmation visiteur +
-        // notification équipe) — best effort, jamais bloquants.
+        // Emails best effort, comme la route Next d'origine : accusé de
+        // réception au visiteur + notification interne (reply-to visiteur).
+        $confirmation = MailTemplates::contactConfirmationEmail([
+            'name' => $data['name'],
+            'requestType' => $requestType,
+        ]);
+        External::sendEmailSafe([
+            'to' => $data['email'],
+            'subject' => $confirmation['subject'],
+            'html' => $confirmation['html'],
+        ]);
+        $notification = MailTemplates::contactNotificationEmail([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $phone,
+            'subject' => $subject,
+            'requestType' => $requestType,
+            'travelDate' => $data['travelDate'] ?? null,
+            'travelers' => $data['travelers'] ?? null,
+            'message' => $data['message'],
+        ]);
+        External::sendEmailSafe([
+            'to' => External::getTeamEmails(),
+            'replyTo' => $data['email'],
+            'subject' => $notification['subject'],
+            'html' => $notification['html'],
+        ]);
 
         Http::created(['message' => 'Demande envoyée avec succès', 'id' => $id]);
     }
@@ -510,8 +540,35 @@ final class PublicApi
         );
         $booking = Serial::booking($row);
 
-        // TODO (e7e3ab3e) : sendEmailSafe ×2 (confirmation client +
-        // notification équipe) — best effort, jamais bloquants.
+        // Emails best effort, comme la route Next d'origine : confirmation
+        // au client + notification interne (pas de reply-to, comme côté Next).
+        $emailData = [
+            'name' => $booking['customerName'],
+            'bookingReference' => $booking['bookingReference'],
+            'circuitTitle' => $circuit !== null ? (string) $circuit['title'] : null,
+            'type' => $booking['type'],
+            'travelDate' => $booking['travelDate'],
+            'returnDate' => $booking['returnDate'],
+            'participants' => $booking['participants'],
+            'totalPrice' => $booking['totalPrice'],
+            'currency' => $booking['currency'],
+        ];
+        $confirmation = MailTemplates::bookingConfirmationEmail($emailData);
+        External::sendEmailSafe([
+            'to' => $booking['customerEmail'],
+            'subject' => $confirmation['subject'],
+            'html' => $confirmation['html'],
+        ]);
+        $notification = MailTemplates::bookingNotificationEmail($emailData + [
+            'customerEmail' => $booking['customerEmail'],
+            'customerPhone' => $booking['customerPhone'],
+            'notes' => $booking['notes'],
+        ]);
+        External::sendEmailSafe([
+            'to' => External::getTeamEmails(),
+            'subject' => $notification['subject'],
+            'html' => $notification['html'],
+        ]);
 
         Http::created([
             'message' => 'Réservation enregistrée avec succès',

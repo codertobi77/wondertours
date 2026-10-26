@@ -13,6 +13,26 @@ const nextConfig: NextConfig = process.env.VERCEL
   : {
       output: "export",
       images: { unoptimized: true },
+      // Dev uniquement (next dev) : proxy /api/* vers l'API PHP locale
+      // (php -S 127.0.0.1:8099 router-dev.php, cf. php-api/). Le tableau
+      // est vide en build (NODE_ENV=production) — l'export statique
+      // refuse les rewrites ; en production Apache route /api/* via
+      // public_html/api/.htaccess.
+      ...(process.env.NODE_ENV === "development"
+        ? {
+            async rewrites() {
+              const target = (
+                process.env.DEV_API_URL ?? "http://127.0.0.1:8099"
+              ).replace(/\/+$/, "");
+              return [
+                {
+                  source: "/api/:path*",
+                  destination: `${target}/api/:path*`,
+                },
+              ];
+            },
+          }
+        : {}),
     };
 
 export default nextConfig;
