@@ -91,11 +91,14 @@ cp public/.htaccess out/.htaccess
 # 4. Upload (lftp) — identifiants via ~/.netrc (jamais en ligne de commande)
 # printf 'machine <hôte> login <utilisateur> password <motdepasse>\n' >> ~/.netrc && chmod 600 ~/.netrc
 lftp "ftp://$FTP_HOST" <<'LFTP'
-set net:timeout 30
+set net:timeout 45
 set net:max-retries 5
-# NB : --parallel[=N] exige la valeur attachée (« --parallel=8 », pas « --parallel 8 »).
-mirror -R --delete --parallel=8 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
-mirror -R --delete --parallel=8 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
+set ftp:ssl-allow true
+set ftp:ignore-pasv-address yes
+debug 3
+# NB : --parallel[=N] exige la valeur attachée (« --parallel=2 », pas « --parallel 2 »).
+mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
+mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
 quit
 LFTP
 
