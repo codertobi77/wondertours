@@ -93,8 +93,9 @@ cp public/.htaccess out/.htaccess
 lftp "ftp://$FTP_HOST" <<'LFTP'
 set net:timeout 30
 set net:max-retries 5
-mirror -R --delete --parallel 8 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
-mirror -R --delete --parallel 8 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
+# NB : --parallel[=N] exige la valeur attachée (« --parallel=8 », pas « --parallel 8 »).
+mirror -R --delete --parallel=8 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
+mirror -R --delete --parallel=8 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
 quit
 LFTP
 

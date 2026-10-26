@@ -158,15 +158,16 @@ jobs:
       - name: Déployer l'API PHP → public_html/api/
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-        # ⚠ lftp ne gère pas les continuations de ligne « \ » : chaque
-        # commande mirror doit tenir sur UNE seule ligne (sinon « 8 »
-        # devient un chemin source — cf. échec de la run 40337766902).
+        # ⚠ lftp : pas de continuations « \ » (une commande = une ligne)
+        # et --parallel[=N] exige la valeur ATTACHÉE : « --parallel 8 »
+        # ferait de « 8 » le répertoire source (cf. runs 40337766902,
+        # 40349929572 : « Access failed: …/wondertours/8 »).
         run: |
           lftp "ftp://$FTP_HOST" <<'LFTP'
           set net:timeout 30
           set net:max-retries 5
           set ftp:ssl-allow true
-          mirror -R --delete --parallel 8 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
+          mirror -R --delete --parallel=8 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
           quit
           LFTP
         # Inclut php-api/.htaccess (routeur /api/) et config.local.php
@@ -181,7 +182,7 @@ jobs:
           set net:timeout 30
           set net:max-retries 5
           set ftp:ssl-allow true
-          mirror -R --delete --parallel 8 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
+          mirror -R --delete --parallel=8 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
           quit
           LFTP
         # --delete retire les pages périmées (slugs renommés…) mais
