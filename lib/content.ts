@@ -13,7 +13,7 @@
  * base Aiven distante), et /api/blog/{slug} n'incrémente les vues qu'une
  * fois par build.
  */
-import { SITE_CONFIG } from "@/lib/constants";
+import { SITE_CONFIG, SERVICES, DESTINATIONS } from "@/lib/constants";
 import { BLOG_POSTS } from "@/lib/data/blog";
 import { CIRCUITS } from "@/lib/data/circuits";
 import { TESTIMONIALS } from "@/lib/data/testimonials";
@@ -46,24 +46,31 @@ export function apiBase(): string | null {
   return SITE_CONFIG.url.replace(/\/+$/, "");
 }
 
-/** Fetch JSON best-effort : null sur tout échec (réseau, statut, timeout 8 s). */
+/** Fetch JSON best-effort : null sur tout échec (réseau, statut, timeout). */
 async function fetchApi<T>(path: string): Promise<T | null> {
   const base = apiBase();
   if (base === null) {
     return null;
   }
-  try {
-    const response = await fetch(`${base}${path}`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) {
-      return null;
+  // Plusieurs tentatives : l'API LWS peut être lente au premier appel
+  // (cold start). Le build ne doit jamais échouer sur le contenu.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(`${base}${path}`, {
+        cache: "force-cache",
+        signal: AbortSignal.timeout(30000),
+      });
+      if (response.ok) {
+        return (await response.json()) as T;
+      }
+    } catch {
+      // on réessaie
     }
-    return (await response.json()) as T;
-  } catch {
-    return null; // repli lib/data — le build continue
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   }
+  return null; // repli lib/data — le build continue
 }
 
 // ─────────────────────────────── Mémoïsation ───────────────────────────────
@@ -142,7 +149,25 @@ export async function getBlogCategories(): Promise<
 // ─────────────────────────────── Listes simples ───────────────────────────────
 
 export async function getDestinations(): Promise<ApiDestination[]> {
-  return fetchPage<ApiDestination>("/api/destinations");
+  const items = await fetchPage<ApiDestination>("/api/destinations");
+  if (items.length > 0) return items;
+  // Repli statique (constants) si l'API est indisponible au build.
+  return DESTINATIONS.map((name, i) => ({
+    id: String(i),
+    name,
+    nameEn: name,
+    slug: name.toLowerCase().replace(/\s+/g, "-"),
+    description: null,
+    descriptionEn: null,
+    imageUrl: null,
+    country: null,
+    region: null,
+    coordinatesLat: null,
+    coordinatesLng: null,
+    isActive: true,
+    createdAt: "",
+    updatedAt: "",
+  }));
 }
 
 export async function getCategories(): Promise<ApiCategory[]> {
@@ -166,7 +191,8 @@ export interface ServiceVM {
 
 export async function getServices(): Promise<ServiceVM[]> {
   const items = await fetchPage<ApiService>("/api/services");
-  return items.map((service) => ({
+  if (items.length > 0) {
+    return items.map((service) => ({
     id: service.id,
     title: service.title,
     titleEn: service.titleEn ?? undefined,
@@ -174,6 +200,17 @@ export async function getServices(): Promise<ServiceVM[]> {
     descriptionEn: service.descriptionEn ?? undefined,
     icon: service.icon ?? "Map",
     href: service.href ?? "/contact",
+  }));
+  }
+  // Repli statique (constants) si l'API est indisponible au build.
+  return SERVICES.map((service) => ({
+    id: String(service.id),
+    title: service.title,
+    titleEn: service.titleEn,
+    description: service.description,
+    descriptionEn: service.descriptionEn,
+    icon: service.icon,
+    href: service.href,
   }));
 }
 
