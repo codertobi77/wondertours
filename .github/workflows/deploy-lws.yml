@@ -150,8 +150,15 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
+          # Les secrets GitHub peuvent contenir un retour à la ligne final
+          # (collage accidentel) qui casse l'authentification FTP (530).
+          # On nettoie avant d'écrire le .netrc.
+          FTP_HOST="$(printf '%s' "$FTP_HOST" | tr -d '\r\n')"
+          FTP_USER="$(printf '%s' "$FTP_USER" | tr -d '\r\n')"
+          FTP_PASSWORD="$(printf '%s' "$FTP_PASSWORD" | tr -d '\r\n')"
           umask 077
           printf 'machine %s login %s password %s\n' "$FTP_HOST" "$FTP_USER" "$FTP_PASSWORD" > "$HOME/.netrc"
+          chmod 600 "$HOME/.netrc"
           # lftp lit ~/.netrc : les identifiants ne figurent ni dans la
           # ligne de commande ni dans les logs.
 
