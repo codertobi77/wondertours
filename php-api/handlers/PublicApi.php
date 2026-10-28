@@ -361,8 +361,9 @@ final class PublicApi
 
     /**
      * GET /api/settings — paramètres publics pour l'export statique du
-     * frontend : liste blanche stricte (biographies du fondateur), rien
-     * d'autre de la table settings n'est exposé sans session. Enveloppe de
+     * frontend : liste blanche stricte (biographies du fondateur + infos
+     * publiques du footer : site, contact, réseaux sociaux), rien d'autre de
+     * la table settings n'est exposé sans session. Enveloppe de
      * pagination standard pour s'accorder aux lecteurs du frontend.
      */
     public static function settings(): never
@@ -372,7 +373,18 @@ final class PublicApi
         $pageSize = $v->pageSize();
         $v->fail();
 
-        $whitelist = ['founder_bio_fr', 'founder_bio_en'];
+        $whitelist = [
+            'founder_bio_fr',
+            'founder_bio_en',
+            'site_name',
+            'site_description',
+            'contact_email',
+            'contact_phone',
+            'contact_address',
+            'social_facebook',
+            'social_instagram',
+            'social_youtube',
+        ];
         $where = 't."key" IN (' . implode(', ', array_fill(0, count($whitelist), '?')) . ')';
 
         self::paged(

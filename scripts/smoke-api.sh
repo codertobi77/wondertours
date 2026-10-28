@@ -102,7 +102,7 @@ check "GET /api/blog/[slug]" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BAS
 check "GET /api/blog-categories" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog-categories")"
 SETTINGS_JSON=$(curl -s "$BASE_URL/api/settings")
 check "GET /api/settings" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/settings")"
-check_json "  liste blanche (clés autorisées uniquement)" "True" "$SETTINGS_JSON" "all(i['key'] in ('founder_bio_fr', 'founder_bio_en') for i in d['items'])"
+check_json "  liste blanche (clés autorisées uniquement)" "True" "$SETTINGS_JSON" "all(i['key'] in ('founder_bio_fr', 'founder_bio_en', 'site_name', 'site_description', 'contact_email', 'contact_phone', 'contact_address', 'social_facebook', 'social_instagram', 'social_youtube') for i in d['items'])"
 
 # ───────────────────── Écritures publiques ─────────────────────
 

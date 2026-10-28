@@ -1,13 +1,65 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { NAVIGATION, SERVICES, SITE_CONFIG } from "@/lib/constants";
 import { useLanguage } from "@/contexts/language-context";
 
+interface FooterSettings {
+  site_name?: string | null;
+  site_description?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_address?: string | null;
+  social_facebook?: string | null;
+  social_instagram?: string | null;
+  social_youtube?: string | null;
+}
+
 export function Footer() {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
+
+  const [settings, setSettings] = useState<FooterSettings>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const items = Array.isArray(data.items) ? data.items : [];
+        const map: FooterSettings = {};
+        for (const item of items) {
+          if (item && typeof item.key === "string") {
+            (map as Record<string, string | null>)[item.key] = item.value ?? null;
+          }
+        }
+        setSettings(map);
+      })
+      .catch(() => {
+        // dégradation gracieuse : on garde les valeurs statiques
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const str = (v: string | null | undefined, fallback: string) =>
+    (v ?? "").trim() || fallback;
+
+  const siteName = str(settings.site_name, SITE_CONFIG.name);
+  const description = str(
+    settings.site_description,
+    isFr ? SITE_CONFIG.description : SITE_CONFIG.descriptionEn
+  );
+  const address = str(settings.contact_address, SITE_CONFIG.contact.address);
+  const phone = str(settings.contact_phone, SITE_CONFIG.contact.phone);
+  const email = str(settings.contact_email, SITE_CONFIG.contact.email);
+  const facebook = str(settings.social_facebook, SITE_CONFIG.links.facebook);
+  const instagram = str(settings.social_instagram, SITE_CONFIG.links.instagram);
+  const youtube = str(settings.social_youtube, SITE_CONFIG.links.youtube);
 
   return (
     <footer className="bg-white text-text">
@@ -18,16 +70,16 @@ export function Footer() {
             <div className="flex items-center">
               <img
                 src="/Logo_wonder_origine.png"
-                alt="Wonder Tours and Services"
+                alt={siteName}
                 className="h-20 w-auto"
               />
             </div>
             <p className="text-text-secondary text-sm leading-relaxed">
-              {isFr ? SITE_CONFIG.description : SITE_CONFIG.descriptionEn}
+              {description}
             </p>
             <div className="flex space-x-4">
               <a
-                href={SITE_CONFIG.links.facebook}
+                href={facebook}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-secondary hover:text-text transition-colors"
@@ -38,7 +90,7 @@ export function Footer() {
                 </svg>
               </a>
               <a
-                href={SITE_CONFIG.links.instagram}
+                href={instagram}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-secondary hover:text-text transition-colors"
@@ -49,7 +101,7 @@ export function Footer() {
                 </svg>
               </a>
               <a
-                href={SITE_CONFIG.links.youtube}
+                href={youtube}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-secondary hover:text-text transition-colors"
@@ -102,24 +154,24 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start space-x-3 text-text-secondary text-sm">
                 <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>{SITE_CONFIG.contact.address}</span>
+                <span>{address}</span>
               </li>
               <li className="flex items-center space-x-3 text-text-secondary text-sm">
                 <Phone className="w-5 h-5 flex-shrink-0" />
                 <a
-                  href={`tel:${SITE_CONFIG.contact.phone}`}
+                  href={`tel:${phone}`}
                   className="hover:text-text transition-colors"
                 >
-                  {SITE_CONFIG.contact.phone}
+                  {phone}
                 </a>
               </li>
               <li className="flex items-center space-x-3 text-text-secondary text-sm">
                 <Mail className="w-5 h-5 flex-shrink-0" />
                 <a
-                  href={`mailto:${SITE_CONFIG.contact.email}`}
+                  href={`mailto:${email}`}
                   className="hover:text-text transition-colors"
                 >
-                  {SITE_CONFIG.contact.email}
+                  {email}
                 </a>
               </li>
             </ul>
@@ -129,7 +181,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-gray-300 mt-8 md:mt-12 pt-6 md:pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-text-secondary text-sm text-center md:text-left">
-            © {new Date().getFullYear()} {SITE_CONFIG.name}.{" "}
+            © {new Date().getFullYear()} {siteName}.{" "}
             {isFr ? "Tous droits réservés." : "All rights reserved."}
           </p>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6 text-sm text-center">
