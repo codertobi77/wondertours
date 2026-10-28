@@ -183,6 +183,10 @@ jobs:
           lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; debug 3; pwd; ls; quit" || true
           echo "---- Tentative avec .netrc (trim) ----"
           lftp "$FTP_HOST" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; debug 3; pwd; ls; quit" || true
+          echo "---- Tentative avec -u (trim explicite) ----"
+          TU="$(printf '%s' "$FTP_USER" | tr -d '\r\n')"
+          TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '\r\n')"
+          lftp -u "$TU","$TP" "$FTP_HOST" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; debug 3; pwd; ls; quit" || true
 
       - name: Déployer l'API PHP → api/ (racine FTP = public_html)
         env:
