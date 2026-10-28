@@ -98,8 +98,8 @@ set ssl:verify-certificate no
 set ftp:ignore-pasv-address yes
 debug 3
 # NB : --parallel[=N] exige la valeur attachée (« --parallel=2 », pas « --parallel 2 »).
-mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
-mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
+mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ api/
+mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ ./
 quit
 LFTP
 

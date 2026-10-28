@@ -155,7 +155,7 @@ jobs:
           # lftp lit ~/.netrc : les identifiants ne figurent ni dans la
           # ligne de commande ni dans les logs.
 
-      - name: Déployer l'API PHP → public_html/api/
+      - name: Déployer l'API PHP → api/ (racine FTP = public_html)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
         # ⚠ lftp : pas de continuations « \ » (une commande = une ligne) et
@@ -173,14 +173,14 @@ jobs:
           set ssl:verify-certificate no
           set ftp:ignore-pasv-address yes
           debug 3
-          mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
+          mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ api/
           quit
           LFTP
         # Inclut php-api/.htaccess (routeur /api/) et config.local.php
         # (secrets du serveur). Exclus : outils de dev uniquement.
         # --delete retire côté serveur les fichiers retirés du dépôt.
 
-      - name: Déployer le frontend statique → public_html/
+      - name: Déployer le frontend statique → racine FTP (public_html)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
         run: |
@@ -191,7 +191,7 @@ jobs:
           set ssl:verify-certificate no
           set ftp:ignore-pasv-address yes
           debug 3
-          mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
+          mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ ./
           quit
           LFTP
         # --delete retire les pages périmées (slugs renommés…) mais
