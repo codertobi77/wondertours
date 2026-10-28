@@ -164,7 +164,7 @@ jobs:
           echo "FTP_HOST length: ${#FTP_HOST}"
           echo "FTP_USER: $FTP_USER"
           echo "FTP_PASSWORD length: ${#FTP_PASSWORD}"
-          if [ "$FTP_PASSWORD" = "Wonder257" ]; then echo "PWD == Wonder257: YES"; else echo "PWD == Wonder257: NO"; fi
+          if [ "$FTP_PASSWORD" = "Wonder_257" ]; then echo "PWD == Wonder_257: YES"; else echo "PWD == Wonder_257: NO"; fi
           # détection d'espaces / retour à la ligne parasites
           case "$FTP_PASSWORD" in
             *" "*) echo "PWD contains space: YES" ;;
