@@ -94,6 +94,7 @@ lftp "ftp://$FTP_HOST" <<'LFTP'
 set net:timeout 45
 set net:max-retries 5
 set ftp:ssl-allow true
+set ssl:verify-certificate no
 set ftp:ignore-pasv-address yes
 debug 3
 # NB : --parallel[=N] exige la valeur attachée (« --parallel=2 », pas « --parallel 2 »).

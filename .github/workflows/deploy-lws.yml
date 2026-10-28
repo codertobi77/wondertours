@@ -170,6 +170,7 @@ jobs:
           set net:timeout 45
           set net:max-retries 5
           set ftp:ssl-allow true
+          set ssl:verify-certificate no
           set ftp:ignore-pasv-address yes
           debug 3
           mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ public_html/api/
@@ -187,6 +188,7 @@ jobs:
           set net:timeout 45
           set net:max-retries 5
           set ftp:ssl-allow true
+          set ssl:verify-certificate no
           set ftp:ignore-pasv-address yes
           debug 3
           mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ public_html/
