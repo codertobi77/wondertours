@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, LogOut, X, Check, AlertCircle, Info, Menu, ChevronDown } from "lucide-react";
+import { Bell, Search, LogOut, X, Check, AlertCircle, Info, Menu, ChevronDown, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { Session } from "@/lib/auth";
@@ -20,6 +20,26 @@ interface HeaderProps {
 export function Header({ onMenuClick, user }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState<string | null>(null);
+
+  async function handlePublish() {
+    setPublishing(true);
+    setPublishMsg(null);
+    try {
+      const res = await fetch("/api/dashboard/publish", { method: "POST" });
+      if (res.ok) {
+        setPublishMsg("Rebuild déclenché — le site sera mis à jour dans ~3 min.");
+      } else {
+        setPublishMsg("Échec du déclenchement.");
+      }
+    } catch {
+      setPublishMsg("Erreur réseau.");
+    } finally {
+      setPublishing(false);
+      setTimeout(() => setPublishMsg(null), 5000);
+    }
+  }
 
   const userName = user?.name ?? user?.email ?? "Utilisateur";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -32,6 +52,8 @@ export function Header({ onMenuClick, user }: HeaderProps) {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
     window.location.assign("/dashboard/login");
   }
+
+  const canPublish = user?.role === "admin" || user?.role === "editor";
 
   const notifications = [
     {
@@ -116,6 +138,21 @@ export function Header({ onMenuClick, user }: HeaderProps) {
 
           {/* Actions */}
           <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-4">
+            {canPublish && (
+              <button
+                onClick={() => void handlePublish()}
+                disabled={publishing}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-full transition-colors disabled:opacity-50"
+                title="Rebuild et redéploie le site public"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden md:inline">{publishing ? "Publication…" : "Publier le site"}</span>
+              </button>
+            )}
+            {publishMsg && (
+              <span className="text-xs text-gray-600 max-w-[200px] truncate">{publishMsg}</span>
+            )}
+
             {/* Notifications */}
             <button
               onClick={() => setShowNotifications(!showNotifications)}

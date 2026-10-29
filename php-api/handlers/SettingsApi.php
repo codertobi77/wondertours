@@ -53,6 +53,7 @@ final class SettingsApi
             return $out;
         });
 
+        \WT\External::triggerRebuild();
         Http::ok(['items' => $items, 'message' => 'Paramètres enregistrés']);
     }
 

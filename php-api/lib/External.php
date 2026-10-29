@@ -237,4 +237,65 @@ final class External
 
         return [$status, json_decode((string) $raw, true)];
     }
+
+    // ─────────────────────────────── GitHub (rebuild on demand) ───────────────────────────────
+
+    /**
+     * Déclenche un rebuild du site via l'API GitHub (repository_dispatch).
+     * Best-effort : n'échoue jamais, n'est jamais bloquant pour la requête appelante.
+     * Debounce : au plus un déclenchement toutes les 5 minutes (fichier temporaire).
+     *
+     * @param bool $force ignore le debounce (bouton « Publier » manuel)
+     */
+    public static function triggerRebuild(bool $force = false): void
+    {
+        $token = Env::get('github_token') ?? Env::get('github_dispatch_token');
+        if ($token === null || $token === '') {
+            return; // pas de token configuré : déclenchement désactivé
+        }
+
+        $repo = Env::get('github_repo') ?? 'codertobi77/wondertours';
+        $branch = Env::get('github_branch') ?? 'master';
+
+        $stampFile = sys_get_temp_dir() . '/wt_rebuild_last';
+        if (!$force && is_file($stampFile)) {
+            $last = (int) @file_get_contents($stampFile);
+            if ($last > 0 && (time() - $last) < 300) {
+                return;
+            }
+        }
+
+        try {
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => 'https://api.github.com/repos/' . $repo . '/dispatches',
+                CURLOPT_POST => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Accept: application/vnd.github+json',
+                    'Authorization: Bearer ' . $token,
+                    'X-GitHub-Api-Version: 2022-11-28',
+                    'User-Agent: WonderTours-PHP',
+                ],
+                CURLOPT_POSTFIELDS => json_encode(
+                    ['event_type' => 'content-updated', 'client_payload' => ['branch' => $branch]],
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                ),
+            ]);
+            $raw = curl_exec($curl);
+            $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+            curl_close($curl);
+
+            if ($status >= 200 && $status < 300) {
+                @file_put_contents($stampFile, (string) time());
+                error_log('[publish] Rebuild déclenché (HTTP ' . $status . ')');
+            } else {
+                error_log('[publish] Échec du déclenchement (HTTP ' . $status . ') : ' . (string) $raw);
+            }
+        } catch (\Throwable $e) {
+            error_log('[publish] Exception : ' . $e->getMessage());
+        }
+    }
 }

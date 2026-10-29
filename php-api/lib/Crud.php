@@ -40,6 +40,7 @@ final class Crud
             'relationColumns' => '',
             'patchFetch' => false,
             'deleteFetch' => false,
+            'rebuild' => false,
             'beforeCreate' => null,
             'beforeUpdate' => null,
             'relations' => null,
@@ -125,6 +126,9 @@ final class Crud
             return $inserted;
         });
         Http::created(($spec['serializer'])($inserted, false));
+        if ($spec['rebuild']) {
+            \WT\External::triggerRebuild();
+        }
     }
 
     // ─────────────────────────────── GET /{id} ───────────────────────────────
@@ -197,6 +201,9 @@ final class Crud
             Http::notFound();
         }
         Http::ok(($spec['serializer'])($updated, false));
+        if ($spec['rebuild']) {
+            \WT\External::triggerRebuild();
+        }
     }
 
     // ─────────────────────────────── DELETE /{id} ───────────────────────────────
@@ -222,6 +229,9 @@ final class Crud
             }
         }
         Http::ok(['message' => $spec['deletedMessage'], 'id' => $id]);
+        if ($spec['rebuild']) {
+            \WT\External::triggerRebuild();
+        }
     }
 
     // ─────────────────────────────── Internes ───────────────────────────────

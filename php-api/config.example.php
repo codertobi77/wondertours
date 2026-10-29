@@ -41,6 +41,12 @@ return [
     // true : cookies Secure (obligatoire derrière HTTPS ; défaut = app_url en https).
     'secure_cookies' => '',
 
+    // GitHub : token PAT (scope repo) pour déclencher le rebuild du site
+    // (repository_dispatch « content-updated ») depuis le dashboard.
+    // Sans token : la publication manuelle est désactivée (best-effort).
+    'github_token' => '',
+    'github_repo' => 'codertobi77/wondertours',
+
     // Fuseau horaire PHP (les dates SQL sont toujours lues en UTC).
     'timezone' => 'UTC',
 

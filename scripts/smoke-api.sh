@@ -160,6 +160,7 @@ fi
 for path in circuits destinations categories testimonials services blog blog-categories bookings contact-requests settings stats media users; do
   check "GET /api/dashboard/$path (admin)" 200 "$(curl -s -b "$ADMIN_JAR" -o /dev/null -w '%{http_code}' "$BASE_URL/api/dashboard/$path")"
 done
+check "POST /api/dashboard/publish (admin)" 200 "$(curl -s -b "$ADMIN_JAR" -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/dashboard/publish")"
 
 if [ -n "$BOOKING_ID" ]; then
   check "PATCH /api/dashboard/bookings/[id]/status" 200 "$(curl -s -b "$ADMIN_JAR" -o /dev/null -w '%{http_code}' -X PATCH "$BASE_URL/api/dashboard/bookings/$BOOKING_ID/status" -H "Content-Type: application/json" -d '{"status":"confirmed"}')"

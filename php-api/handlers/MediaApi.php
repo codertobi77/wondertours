@@ -159,6 +159,7 @@ final class MediaApi
                 Support::now(),
             ]
         );
+        \WT\External::triggerRebuild();
         Http::created(Serial::mediaFile($row));
     }
 
@@ -197,6 +198,7 @@ final class MediaApi
         if ($row === null) {
             Http::notFound(); // P2025
         }
+        \WT\External::triggerRebuild();
         Http::ok(Serial::mediaFile($row));
     }
 
@@ -219,6 +221,7 @@ final class MediaApi
         if (is_string($media['storage_path']) && str_starts_with($media['storage_path'], '/')) {
             @unlink($media['storage_path']);
         }
+        \WT\External::triggerRebuild();
         Http::ok(['message' => 'Fichier supprimé', 'id' => $id, 'url' => $media['url']]);
     }
 

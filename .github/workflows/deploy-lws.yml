@@ -30,6 +30,8 @@ name: Deploy LWS
 
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types: [content-updated]
   workflow_run:
     workflows: [CI]
     types: [completed]
@@ -43,6 +45,7 @@ jobs:
     # Les runs de CI des PR (head_branch != master) ne déploient pas.
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'repository_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'master')
     runs-on: ubuntu-latest
