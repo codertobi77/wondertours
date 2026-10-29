@@ -162,32 +162,6 @@ jobs:
           # lftp lit ~/.netrc : les identifiants ne figurent ni dans la
           # ligne de commande ni dans les logs.
 
-      - name: Diagnostic FTP (auth / secrets)
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        run: |
-          echo "FTP_HOST length: ${#FTP_HOST}"
-          echo "FTP_USER length: ${#FTP_USER}"
-          echo "FTP_USER: $FTP_USER"
-          echo "FTP_PASSWORD length: ${#FTP_PASSWORD}"
-          if [ "$FTP_PASSWORD" = "Wonder_257" ]; then echo "PWD == Wonder_257: YES"; else echo "PWD == Wonder_257: NO"; fi
-          # détection d'espaces / retour à la ligne parasites
-          case "$FTP_PASSWORD" in
-            *" "*) echo "PWD contains space: YES" ;;
-            *) echo "PWD contains space: NO" ;;
-          esac
-          if printf '%s' "$FTP_PASSWORD" | grep -q $'\n'; then echo "PWD contains newline: YES"; else echo "PWD contains newline: NO"; fi
-          # test brut d'authentification (debug) sans mirror
-          lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; debug 3; pwd; ls; quit" || true
-          echo "---- Tentative avec .netrc (trim) ----"
-          lftp "$FTP_HOST" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; debug 3; pwd; ls; quit" || true
-          echo "---- Tentative avec -u (trim explicite) ----"
-          TU="$(printf '%s' "$FTP_USER" | tr -d '\r\n')"
-          TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '\r\n')"
-          lftp -u "$TU","$TP" "$FTP_HOST" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; debug 3; pwd; ls; quit" || true
-
       - name: Déployer l'API PHP → api/ (racine FTP = public_html)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
