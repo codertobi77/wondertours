@@ -144,24 +144,6 @@ jobs:
       - name: Installer lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
-      - name: Écrire les identifiants FTP (~/.netrc, perms 600)
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        run: |
-          # Les secrets GitHub peuvent contenir un retour à la ligne final
-          # (collage accidentel) qui casse l'authentification FTP (530).
-          # On nettoie avant d'écrire le .netrc.
-          FTP_HOST="$(printf '%s' "$FTP_HOST" | tr -d '\r\n')"
-          FTP_USER="$(printf '%s' "$FTP_USER" | tr -d '\r\n')"
-          FTP_PASSWORD="$(printf '%s' "$FTP_PASSWORD" | tr -d '\r\n')"
-          umask 077
-          printf 'machine %s login %s password %s\n' "$FTP_HOST" "$FTP_USER" "$FTP_PASSWORD" > "$HOME/.netrc"
-          chmod 600 "$HOME/.netrc"
-          # lftp lit ~/.netrc : les identifiants ne figurent ni dans la
-          # ligne de commande ni dans les logs.
-
       - name: Déployer l'API PHP → api/ (racine FTP = public_html)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
@@ -173,16 +155,12 @@ jobs:
         # étendu, debug 3 (greeting + erreurs FTP dans le log) et mirror
         # bavard — chaque transfert est visible.
         run: |
-          lftp "ftp://$FTP_HOST" <<'LFTP'
-          set net:timeout 45
-          set net:max-retries 5
-          set ftp:ssl-allow true
-          set ssl:verify-certificate no
-          set ftp:ignore-pasv-address yes
-          debug 3
-          mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ api/
-          quit
-          LFTP
+          # Credentials trimmés dans la même étape (évite les retours à la ligne
+          # des secrets GitHub et la dépendance au .netrc entre étapes).
+          TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
+          TU="$(printf '%s' "$FTP_USER" | tr -d '[:space:]')"
+          TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:space:]')"
+          lftp -u "$TU","$TP" "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; debug 3; mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ api/; quit"
         # Inclut php-api/.htaccess (routeur /api/) et config.local.php
         # (secrets du serveur). Exclus : outils de dev uniquement.
         # --delete retire côté serveur les fichiers retirés du dépôt.
@@ -191,16 +169,10 @@ jobs:
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
         run: |
-          lftp "ftp://$FTP_HOST" <<'LFTP'
-          set net:timeout 45
-          set net:max-retries 5
-          set ftp:ssl-allow true
-          set ssl:verify-certificate no
-          set ftp:ignore-pasv-address yes
-          debug 3
-          mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ ./
-          quit
-          LFTP
+          TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
+          TU="$(printf '%s' "$FTP_USER" | tr -d '[:space:]')"
+          TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:space:]')"
+          lftp -u "$TU","$TP" "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; debug 3; mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ ./; quit"
         # --delete retire les pages périmées (slugs renommés…) mais
         # préserve strictement : /api (étape précédente), /uploads
         # (médias déposés par l'API PHP) et /.well-known (ACME).
