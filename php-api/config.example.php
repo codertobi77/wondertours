@@ -43,6 +43,8 @@ return [
 
     // GitHub : token PAT (scope repo) pour déclencher le rebuild du site
     // (repository_dispatch « content-updated ») depuis le dashboard.
+    // Local : variable d'environnement GITHUB_TOKEN dans .env.
+    // CI : secret GitHub nommé GH_PAT (le préfixe GITHUB_ est réservé).
     // Sans token : la publication manuelle est désactivée (best-effort).
     'github_token' => '',
     'github_repo' => 'codertobi77/wondertours',

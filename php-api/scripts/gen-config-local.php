@@ -25,6 +25,7 @@ $mapping = [
     'IMGBB_API_KEY' => 'imgbb_api_key',
     'DEEPL_API_KEY' => 'deepl_api_key',
     'SECURE_COOKIES' => 'secure_cookies',
+    'GH_PAT' => 'github_token',
     'GITHUB_TOKEN' => 'github_token',
     'GITHUB_DISPATCH_TOKEN' => 'github_token',
     'GITHUB_REPO' => 'github_repo',
