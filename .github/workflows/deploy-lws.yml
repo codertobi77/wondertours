@@ -147,6 +147,8 @@ jobs:
       - name: Déployer l'API PHP → api/ (racine FTP = public_html)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         # ⚠ lftp : pas de continuations « \ » (une commande = une ligne) et
         # --parallel[=N] exige la valeur ATTACHÉE (« --parallel 8 » ferait
         # de « 8 » le répertoire source — cf. runs 40337766902, 40349929572).
@@ -168,6 +170,8 @@ jobs:
       - name: Déployer le frontend statique → racine FTP (public_html)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
           TU="$(printf '%s' "$FTP_USER" | tr -d '[:space:]')"
