@@ -28,13 +28,9 @@
 
 name: Deploy LWS
 
+# DEPRECATED: remplacé par deploy-laravel.yml
 on:
   workflow_dispatch:
-  repository_dispatch:
-    types: [content-updated]
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
 
 concurrency:
   group: deploy-lws
