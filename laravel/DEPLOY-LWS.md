@@ -11,7 +11,7 @@
 2. `cd laravel && composer install --no-dev --optimize-autoloader`
 3. Copier `.env.example` → `.env` et remplir les valeurs (DB, AUTH_SECRET, etc.).
 4. `php artisan key:generate`
-5. `php artisan migrate` (sur une base vide) ou utiliser la base existante (tables déjà créées par Prisma).
+5. `php artisan migrate` (sur une base vide) ou utiliser la base existante (tables déjà existantes).
 6. `php artisan config:cache && php artisan route:cache`
 
 ## Configuration Apache (LWS)
@@ -27,7 +27,7 @@ cp -r out/* laravel/public/
 Les routes `/api/*` sont servies par Laravel, le reste par les fichiers statiques.
 
 ## Migrations
-Les tables existent déjà (créées par Prisma). Pour utiliser la base existante :
+Les tables existent déjà. Pour utiliser la base existante :
 ```bash
 php artisan migrate --pretend  # vérifier
 # puis marquer comme exécutées si nécessaire

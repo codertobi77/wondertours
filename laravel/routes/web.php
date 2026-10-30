@@ -63,5 +63,8 @@ Route::get('/temoignages', function () {
     ]);
 });
 
+Route::get('/sejours', fn () => view('sejours'));
+Route::get('/hotels', fn () => view('hotels'));
+
 Route::get('/dashboard/login', fn () => view('dashboard-login'));
 Route::get('/dashboard/{any?}', fn () => view('dashboard'))->where('any', '.*');

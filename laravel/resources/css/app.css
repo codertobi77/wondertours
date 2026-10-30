@@ -1,3 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: #F8F6F0;
+  color: #17221F;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Utilitaires */
+.img-fallback { background-color: #f3ede1; opacity: .85; }
+.img-fallback:hover { opacity: 1; }
+
+select::-webkit-scrollbar { width: 8px; }
+select::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 4px; }
+select::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 4px; }
+select::-webkit-scrollbar-thumb:hover { background: #d97706; }
+
+@keyframes progress-indeterminate {
+  0% { width: 0%; margin-left: 0%; }
+  50% { width: 75%; margin-left: 25%; }
+  100% { width: 0%; margin-left: 100%; }
+}
+.animate-progress-indeterminate { animation: progress-indeterminate 1.4s ease-in-out infinite; }
+
+.font-heading,
+.font-playfair,
+h1, h2, h3, .font-playfair-display {
+  font-family: "Playfair Display", Georgia, serif;
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
