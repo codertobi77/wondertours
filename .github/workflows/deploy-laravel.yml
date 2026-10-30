@@ -50,6 +50,7 @@ jobs:
           APP_KEY: ${{ secrets.APP_KEY }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           missing=0
           for v in FTP_HOST FTP_USER FTP_PASSWORD DATABASE_URL AUTH_SECRET APP_URL APP_KEY ADMIN_EMAIL ADMIN_PASSWORD DB_PASSWORD; do
