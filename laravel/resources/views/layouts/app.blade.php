@@ -17,7 +17,7 @@
         <nav class="container mx-auto px-4 lg:px-8">
             <div class="flex items-center justify-between h-20">
                 <a href="/" class="flex items-center">
-                    <img src="/Logo_wonder_blanc.png" alt="Wonder Tours and Services" class="h-15 w-auto">
+                    <img src="/Logo_wonder_blanc.png" alt="Wonder Tours and Services" class="h-16 w-auto">
                 </a>
                 <div class="hidden lg:flex items-center space-x-8" id="main-nav">
                     <a href="/" class="nav-link hover:text-white transition-colors font-medium text-white/80">Accueil</a>
