@@ -11,8 +11,8 @@
     <div class="absolute inset-0 bg-black/60"></div>
   </div>
   <div class="relative z-10 container mx-auto px-4 lg:px-8 py-24 text-center max-w-4xl mx-auto">
-    <h5 class="uppercase tracking-widest text-amber-400 text-sm font-semibold mb-6">EXPLOREZ LE BÉNIN, LE TOGO ET LE GHANA AUTREMENT</h5>
-    <h1 class="font-heading text-4xl md:text-6xl font-bold mb-6">Découvrez le Bénin, le Togo et le Ghana à travers<br />des expériences authentiques.</h1>
+    <h5 data-i18n="hero.subtitle" class="uppercase tracking-widest text-amber-400 text-sm font-semibold mb-6">EXPLOREZ LE BÉNIN, LE TOGO ET LE GHANA AUTREMENT</h5>
+    <h1 data-i18n="hero.title" class="font-heading text-4xl md:text-6xl font-bold mb-6">Découvrez le Bénin, le Togo et le Ghana à travers<br />des expériences authentiques.</h1>
     <p class="text-gray-200 text-lg mb-8 max-w-3xl mx-auto">Avec plus de 20 ans d'expertise, Wonder Tours and Services vous accompagne dans la découverte du patrimoine culturel et naturel du Bénin, du Togo et du Ghana.</p>
     <div class="flex items-center justify-center gap-4 flex-wrap">
       <a href="/circuits" class="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 rounded-full font-medium transition">Découvrir nos circuits</a>

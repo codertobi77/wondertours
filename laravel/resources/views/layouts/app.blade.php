@@ -30,7 +30,7 @@
                     <a href="/contact" data-i18n="nav.contact" class="nav-link hover:text-white transition-colors font-medium text-white/80">Contact</a>
                 </div>
                 <div class="hidden lg:flex items-center space-x-4">
-                    <button id="cart-btn" class="relative flex items-center space-x-2 text-white hover:text-white/80 transition-all duration-300">
+                    <button id="cart-btn" onclick="openCart()" class="relative flex items-center space-x-2 text-white hover:text-white/80 transition-all duration-300">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                     </button>
                 </div>
@@ -74,6 +74,17 @@
     <main class="flex-1">
         @yield('content')
     </main>
+
+    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-80 max-w-full bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300">
+        <div class="flex items-center justify-between p-4 border-b">
+            <h3 class="font-heading text-lg font-bold text-text">Ma réservation</h3>
+            <button onclick="closeCart()" class="p-2 text-text">&times;</button>
+        </div>
+        <div class="p-4 space-y-3">
+            <div id="cart-body" class="text-text-secondary text-sm">Aucun circuit sélectionné.</div>
+        </div>
+    </div>
+    <div id="cart-scrim" onclick="closeCart()" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
 
     <footer class="bg-white text-[#17221F] mt-12">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
@@ -154,8 +165,35 @@
         })();
         // i18n minimal FR/EN avec dictionnaire de navigation
         const I18N = {
-            fr: { 'nav.home':'Accueil','nav.about':'À propos','nav.circuits':'Circuits','nav.sejours':'Séjours','nav.hotels':'Hôtels','nav.temoignages':'Témoignages','nav.blog':'Blog','nav.contact':'Contact' },
-            en: { 'nav.home':'Home','nav.about':'About','nav.circuits':'Tours','nav.sejours':'Stays','nav.hotels':'Hotels','nav.temoignages':'Testimonials','nav.blog':'Blog','nav.contact':'Contact' }
+            fr: {
+                'nav.home':'Accueil','nav.about':'À propos','nav.circuits':'Circuits','nav.sejours':'Séjours','nav.hotels':'Hôtels','nav.temoignages':'Témoignages','nav.blog':'Blog','nav.contact':'Contact',
+                'hero.subtitle':'EXPLOREZ LE BÉNIN, LE TOGO ET LE GHANA AUTREMENT',
+                'hero.title':'Découvrez le Bénin, le Togo et le Ghana à travers des expériences authentiques.',
+                'hero.desc':'Avec plus de 20 ans d'expertise, Wonder Tours and Services vous accompagne dans la découverte du patrimoine culturel et naturel du Bénin, du Togo et du Ghana.',
+                'hero.cta1':'Découvrir nos circuits','hero.cta2':'Planifier mon voyage',
+                'experience.title':'20+ années d'expérience',
+                'circuits.kicker':'Nos expériences incontournables','circuits.title':'Découvrez les destinations qui font la richesse du Bénin, du Togo et du Ghana','circuits.more':'Voir tous les circuits',
+                'why.title':'Voyagez avec une équipe qui connaît le Bénin, le Togo et le Ghana',
+                'dest.title':'Le Bénin, le Togo et le Ghana vous attendent',
+                'test.title':'Ce que nos voyageurs disent',
+                'footer.navigation':'Navigation','footer.services':'Services','footer.contact':'Contact',
+                'circuits.page':'Circuits','blog.page':'Blog','contact.page':'Contact','about.page':'À propos','testim.page':'Témoignages',
+                'sejours.page':'Séjours','hotels.page':'Hôtels'
+            },
+            en: {
+                'nav.home':'Home','nav.about':'About','nav.circuits':'Tours','nav.sejours':'Stays','nav.hotels':'Hotels','nav.temoignages':'Testimonials','nav.blog':'Blog','nav.contact':'Contact',
+                'hero.subtitle':'EXPLORE BENIN, TOGO AND GHANA DIFFERENTLY',
+                'hero.title':'Discover Benin, Togo and Ghana through authentic experiences.',
+                'hero.desc':'With over 20 years of expertise, Wonder Tours and Services accompanies you in discovering Benin's, Togo's and Ghana's cultural and natural heritage.',
+                'hero.cta1':'Discover our tours','hero.cta2':'Plan my trip',
+                'experience.title':'20+ years of experience',
+                'circuits.kicker':'Our must-try experiences','circuits.title':'Discover the destinations that make Benin, Togo and Ghana so rich','circuits.more':'View all tours',
+                'why.title':'Travel with a team that knows Benin, Togo and Ghana',
+                'dest.title':'Benin, Togo and Ghana await you',
+                'test.title':'What our travellers say','footer.navigation':'Navigation','footer.services':'Services','footer.contact':'Contact',
+                'circuits.page':'Tours','blog.page':'Blog','contact.page':'Contact','about.page':'About','testim.page':'Testimonials',
+                'sejours.page':'Stays','hotels.page':'Hotels'
+            }
         };
         function setLang(lang) {
             localStorage.setItem('wt-locale', lang);
@@ -177,6 +215,14 @@
         window.addEventListener('load', function() {
             setLang(localStorage.getItem('wt-locale') || 'fr');
         });
+        window.openCart = function() {
+            document.getElementById('cart-sidebar').classList.remove('translate-x-full');
+            document.getElementById('cart-scrim').classList.remove('hidden');
+        };
+        window.closeCart = function() {
+            document.getElementById('cart-sidebar').classList.add('translate-x-full');
+            document.getElementById('cart-scrim').classList.add('hidden');
+        };
     </script>
     @stack('scripts')
 </body>

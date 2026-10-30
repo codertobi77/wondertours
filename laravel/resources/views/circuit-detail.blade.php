@@ -2,49 +2,57 @@
 @section('title', $circuit->title)
 @section('content')
 
-<article class="py-12 container mx-auto px-4 max-w-4xl">
-    <h1 class="text-3xl font-bold mb-2">{{ $circuit->title }}</h1>
-    <p class="text-gray-600 mb-6">{{ $circuit->subtitle }}</p>
-    <div class="grid md:grid-cols-2 gap-8 mb-8">
+<section class="py-12 bg-white">
+  <div class="container mx-auto px-4 lg:px-8">
+    <div class="grid md:grid-cols-2 gap-8">
+      <div>
         @if($circuit->image_url)
-        <img src="{{ $circuit->image_url }}" alt="{{ $circuit->title }}" class="rounded-lg w-full object-cover">
+          <img src="{{ $circuit->image_url }}" alt="{{ $circuit->title }}" class="w-full h-96 object-cover rounded-2xl shadow-lg">
+        @else
+          <div class="w-full h-96 img-fallback rounded-2xl"></div>
         @endif
-        <div>
-            <p class="text-lg mb-4">{{ $circuit->description }}</p>
-            <p class="font-bold text-amber-600 text-xl">{{ $circuit->price }} {{ $circuit->currency }}</p>
-            <ul class="mt-4 text-sm text-gray-600 space-y-1">
-                <li><strong>Durée :</strong> {{ $circuit->duration }}</li>
-                <li><strong>Participants :</strong> {{ $circuit->min_participants }} – {{ $circuit->max_participants }}</li>
-                <li><strong>Destination :</strong> {{ optional($circuit->destination)->name ?? '' }}</li>
-            </ul>
-            @if(!empty($circuit->categories))
-            <div class="mt-4 flex gap-2 flex-wrap">
-                @foreach($circuit->categories as $cat)
-                    <span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">{{ $cat->name }}</span>
-                @endforeach
-            </div>
-            @endif
+      </div>
+      <div>
+        <span class="text-xs uppercase tracking-widest text-amber-600">{{ optional($circuit->destination)->name ?? '' }}</span>
+        <h1 class="font-heading text-4xl font-bold text-text mt-2 mb-4">{{ $circuit->title }}</h1>
+        <p class="text-text-secondary mb-6">{{ $circuit->subtitle }}</p>
+        <div class="flex flex-wrap gap-2 mb-4">
+          @foreach($circuit->categories ?? [] as $cat)
+            <span class="bg-amber-600/10 text-amber-700 text-xs font-medium px-3 py-1 rounded-full">{{ $cat->name }}</span>
+          @endforeach
         </div>
+        <div class="bg-[#F8F6F0] p-6 rounded-2xl mb-6 space-y-2">
+          <div class="flex justify-between"><span class="text-text-secondary">Durée</span><span class="font-medium text-text">{{ $circuit->duration }}</span></div>
+          <div class="flex justify-between"><span class="text-text-secondary">Prix</span><span class="text-2xl font-bold text-amber-600">{{ $circuit->price }} {{ $circuit->currency }}</span></div>
+          <div class="flex justify-between"><span class="text-text-secondary">Participants</span><span class="font-medium text-text">{{ $circuit->min_participants }} – {{ $circuit->max_participants }}</span></div>
+          <div class="flex justify-between"><span class="text-text-secondary">Difficulté</span><span class="font-medium text-text">{{ $circuit->difficulty }}</span></div>
+        </div>
+        <a href="/contact" class="block w-full text-center bg-amber-600 text-white py-3 rounded-full font-medium hover:bg-amber-700 transition">Planifier mon voyage</a>
+      </div>
     </div>
-    @if(!empty($circuit->itinerary))
-    <section class="mb-8">
-        <h2 class="text-xl font-bold mb-3">Itinéraire</h2>
-        <ul class="space-y-2">
-            @foreach($circuit->itinerary as $step)
-                <li class="border-l-4 border-amber-400 pl-4">{{ is_string($step) ? $step : ($step['description'] ?? json_encode($step)) }}</li>
-            @endforeach
-        </ul>
-    </section>
-    @endif
+  </div>
+</section>
+
+@if($circuit->description)
+<section class="py-16 bg-[#F8F6F0]">
+  <div class="container mx-auto px-4 lg:px-8 max-w-4xl">
+    <h2 class="font-heading text-2xl font-bold text-text mb-4">Description</h2>
+    <p class="text-text-secondary leading-relaxed mb-6">{{ $circuit->description }}</p>
     @if(!empty($circuit->highlights))
-    <section class="mb-8">
-        <h2 class="text-xl font-bold mb-3">Points forts</h2>
-        <ul class="list-disc pl-5">
-            @foreach($circuit->highlights as $h)
-                <li>{{ $h }}</li>
-            @endforeach
-        </ul>
-    </section>
+    <h3 class="font-heading text-xl font-bold text-text mb-3">Points forts</h3>
+    <ul class="list-disc pl-5 text-text-secondary space-y-1 mb-6">
+      @foreach($circuit->highlights as $h)<li>{{ $h }}</li>@endforeach
+    </ul>
     @endif
-</article>
+    @if(!empty($circuit->itinerary))
+    <h3 class="font-heading text-xl font-bold text-text mb-3">Itinéraire</h3>
+    <ul class="space-y-2">
+      @foreach($circuit->itinerary as $step)
+        <li class="border-l-4 border-amber-400 pl-4 text-text-secondary">{{ is_string($step) ? $step : ($step['description'] ?? json_encode($step)) }}</li>
+      @endforeach
+    </ul>
+    @endif
+  </div>
+</section>
+@endif
 @endsection
