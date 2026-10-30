@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BlogCategory;
 use App\Models\BlogPost;
+use App\Models\Booking;
 use App\Models\Category;
 use App\Models\Circuit;
 use App\Models\Destination;
