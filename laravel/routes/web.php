@@ -48,7 +48,13 @@ Route::get('/blog/{slug}', function (string $slug) {
 });
 
 Route::get('/contact', fn () => Inertia::render('Contact'));
-Route::get('/a-propos', fn () => Inertia::render('About'));
+Route::get('/a-propos', function () {
+    $settings = \App\Models\Setting::whereIn('key', ['founder_bio_fr', 'founder_bio_en'])->pluck('value', 'key');
+    return Inertia::render('About', [
+        'founderBioFr' => $settings['founder_bio_fr'] ?? null,
+        'founderBioEn' => $settings['founder_bio_en'] ?? null,
+    ]);
+});
 Route::get('/temoignages', function () {
     $testimonials = Testimonial::where('is_active', true)->orderByDesc('is_featured')->orderByDesc('date')->get();
     return Inertia::render('Testimonials', ['testimonials' => $testimonials]);
