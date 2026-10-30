@@ -18,7 +18,7 @@
   <div class="container mx-auto px-4 lg:px-8">
     <div class="grid md:grid-cols-2 gap-12 items-center">
       <div>
-        <h2 class="font-heading text-3xl font-bold text-text mb-4">Une équipe qui connaît le terrain</h2>
+        @component('components.section-heading', ['title' => 'Une équipe qui connaît le terrain']) @endcomponent
         <p class="text-text-secondary leading-relaxed mb-4">Wonder Tours and Services organise des séjours, visites culturelles et circuits au Bénin, au Togo et au Ghana. Notre expérience locale nous permet d'offrir des expériences authentiques et personnalisées à chaque voyageur.</p>
         <p class="text-text-secondary leading-relaxed">D'Ouidah à Abomey, de Lomé à Kumasi, découvrez des pays riches en histoire, en culture et en paysages exceptionnels.</p>
       </div>
