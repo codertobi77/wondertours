@@ -1,15 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 use App\Models\Circuit;
 use App\Models\Testimonial;
 use App\Models\BlogPost;
 use App\Models\Service;
 use App\Models\Destination;
+use App\Models\Category;
+use App\Models\BlogCategory;
+use App\Models\Setting;
 
 Route::get('/', function () {
-    return Inertia::render('Home', [
+    return view('home', [
         'circuits' => Circuit::with(['destination', 'categories'])
             ->where('is_active', true)->orderByDesc('is_featured')->orderByDesc('created_at')->take(6)->get(),
         'testimonials' => Testimonial::where('is_active', true)->orderByDesc('is_featured')->orderByDesc('date')->get(),
@@ -20,48 +22,46 @@ Route::get('/', function () {
 });
 
 Route::get('/circuits', function () {
-    $circuits = Circuit::with(['destination', 'categories'])->where('is_active', true)->orderByDesc('is_featured')->orderByDesc('created_at')->get();
-    $destinations = Destination::where('is_active', true)->orderBy('name')->get();
-    $categories = \App\Models\Category::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
-    return Inertia::render('Circuits', [
-        'circuits' => $circuits,
-        'destinations' => $destinations,
-        'categories' => $categories,
+    return view('circuits', [
+        'circuits' => Circuit::with(['destination', 'categories'])->where('is_active', true)->orderByDesc('is_featured')->orderByDesc('created_at')->get(),
+        'destinations' => Destination::where('is_active', true)->orderBy('name')->get(),
+        'categories' => Category::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
     ]);
 });
 
 Route::get('/circuits/{slug}', function (string $slug) {
     $circuit = Circuit::with(['destination', 'categories'])->where('slug', $slug)->where('is_active', true)->firstOrFail();
-    return Inertia::render('CircuitDetail', ['circuit' => $circuit]);
+    return view('circuit-detail', ['circuit' => $circuit]);
 });
 
 Route::get('/blog', function () {
-    $posts = BlogPost::with('category')->where('is_published', true)->orderByDesc('is_featured')->orderByDesc('published_at')->get();
-    $categories = \App\Models\BlogCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
-    return Inertia::render('Blog', ['posts' => $posts, 'categories' => $categories]);
+    return view('blog', [
+        'posts' => BlogPost::with('category')->where('is_published', true)->orderByDesc('is_featured')->orderByDesc('published_at')->get(),
+        'categories' => BlogCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
+    ]);
 });
 
 Route::get('/blog/{slug}', function (string $slug) {
     $post = BlogPost::with('category')->where('slug', $slug)->where('is_published', true)->firstOrFail();
     $post->increment('views');
-    return Inertia::render('BlogPost', ['post' => $post]);
+    return view('blog-post', ['post' => $post]);
 });
 
-Route::get('/contact', fn () => Inertia::render('Contact'));
+Route::get('/contact', fn () => view('contact'));
+
 Route::get('/a-propos', function () {
-    $settings = \App\Models\Setting::whereIn('key', ['founder_bio_fr', 'founder_bio_en'])->pluck('value', 'key');
-    return Inertia::render('About', [
+    $settings = Setting::whereIn('key', ['founder_bio_fr', 'founder_bio_en'])->pluck('value', 'key');
+    return view('about', [
         'founderBioFr' => $settings['founder_bio_fr'] ?? null,
         'founderBioEn' => $settings['founder_bio_en'] ?? null,
     ]);
 });
+
 Route::get('/temoignages', function () {
-    $testimonials = Testimonial::where('is_active', true)->orderByDesc('is_featured')->orderByDesc('date')->get();
-    return Inertia::render('Testimonials', ['testimonials' => $testimonials]);
+    return view('testimonials', [
+        'testimonials' => Testimonial::where('is_active', true)->orderByDesc('is_featured')->orderByDesc('date')->get(),
+    ]);
 });
 
-// Dashboard routes (SPA - all handled by React)
-Route::get('/dashboard/{any?}', fn () => Inertia::render('Dashboard'))->where('any', '.*');
-Route::get('/dashboard/login', fn () => Inertia::render('DashboardLogin'));
-Route::get('/dashboard/forgot-password', fn () => Inertia::render('ForgotPassword'));
-Route::get('/dashboard/reset-password', fn () => Inertia::render('ResetPassword'));
+Route::get('/dashboard/login', fn () => view('dashboard-login'));
+Route::get('/dashboard/{any?}', fn () => view('dashboard'))->where('any', '.*');

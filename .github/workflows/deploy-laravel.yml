@@ -1,7 +1,7 @@
-# Déploiement Laravel sur LWS Perso — frontend Next.js statique + API Laravel.
+# Déploiement Laravel sur LWS Perso — frontend Blade + API Laravel.
 #
-# Le frontend Next.js est buildé puis copié dans laravel/public/ ;
-# Laravel sert à la fois l'API (/api/*) et les fichiers statiques.
+# Le frontend Blade est servi par Laravel au runtime ;
+# l'API (/api/*) est servie par les controllers Laravel (Eloquent).
 #
 # Déclenchement :
 #   - automatique : à chaque CI verte sur master (workflow_run) ;
@@ -117,7 +117,7 @@ jobs:
           php artisan route:cache
           php artisan view:cache
 
-      - name: Build assets Vite (React/Inertia)
+      - name: Build assets Vite (Tailwind/CSS)
         working-directory: laravel
         run: bun install && bun run build
 
