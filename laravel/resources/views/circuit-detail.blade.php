@@ -21,12 +21,12 @@
             <span class="bg-amber-600/10 text-amber-700 text-xs font-medium px-3 py-1 rounded-full">{{ $cat->name }}</span>
           @endforeach
         </div>
-        <div class="bg-[#F8F6F0] p-6 rounded-2xl mb-6 space-y-2">
+        @component('components.card', ['class'=>'p-6 mb-6 space-y-2'])
           <div class="flex justify-between"><span class="text-text-secondary">Durée</span><span class="font-medium text-text">{{ $circuit->duration }}</span></div>
           <div class="flex justify-between"><span class="text-text-secondary">Prix</span><span class="text-2xl font-bold text-amber-600">{{ $circuit->price }} {{ $circuit->currency }}</span></div>
           <div class="flex justify-between"><span class="text-text-secondary">Participants</span><span class="font-medium text-text">{{ $circuit->min_participants }} – {{ $circuit->max_participants }}</span></div>
           <div class="flex justify-between"><span class="text-text-secondary">Difficulté</span><span class="font-medium text-text">{{ $circuit->difficulty }}</span></div>
-        </div>
+        @endcomponent
         <a href="/contact" class="block w-full text-center bg-amber-600 text-white py-3 rounded-full font-medium hover:bg-amber-700 transition mb-2">Planifier mon voyage</a>
         <button onclick="addToCart('{{ $circuit->title }}')" class="block w-full text-center border border-amber-600 text-amber-600 py-3 rounded-full font-medium hover:bg-amber-600/10 transition">Ajouter à ma réservation</button>
       </div>

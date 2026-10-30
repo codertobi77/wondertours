@@ -8,9 +8,7 @@
     <div class="absolute inset-0 bg-black/60"></div>
   </div>
   <div class="relative z-10 container mx-auto px-4 lg:px-8 text-center max-w-3xl">
-    <h5 class="uppercase tracking-widest text-amber-400 text-sm font-semibold mb-3">Contact</h5>
-    <h1 data-i18n="contact.page" class="font-heading text-4xl md:text-5xl font-bold mb-4">Contactez-nous</h1>
-    <p class="text-gray-200 text-lg">Une question, un projet de voyage ? Notre équipe vous répond.</p>
+    @component('components.section-heading', ['kicker'=>'Contact','title'=>'Contactez-nous','subtitle'=>'Une question, un projet de voyage ? Notre équipe vous répond.','class'=>'text-white']) @endcomponent
   </div>
 </section>
 
@@ -31,7 +29,8 @@
           <h3 class="font-heading text-xl font-bold text-text mb-2">Message envoyé</h3>
           <p class="text-text-secondary">Nous vous répondons sous 24h.</p>
         </div>
-        <form id="contact-form" class="bg-[#F8F6F0] p-8 rounded-2xl shadow-sm space-y-4">
+        @component('components.card', ['class'=>'p-8 space-y-4'])
+        <form id="contact-form" class="space-y-4">
           <input name="name" required placeholder="Nom complet" class="w-full border rounded-lg px-4 py-3">
           <input type="email" name="email" required placeholder="Email" class="w-full border rounded-lg px-4 py-3">
           <input type="tel" name="phone" placeholder="Téléphone / WhatsApp" class="w-full border rounded-lg px-4 py-3">
@@ -39,6 +38,7 @@
           <button type="submit" id="contact-btn" class="w-full bg-amber-600 text-white py-3 rounded-full font-medium hover:bg-amber-700 transition">Envoyer</button>
           <div id="contact-msg" class="text-sm text-center hidden"></div>
         </form>
+        @endcomponent
       </div>
     </div>
   </div>
