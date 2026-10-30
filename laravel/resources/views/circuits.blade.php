@@ -5,8 +5,8 @@
 <section class="py-12 bg-[#F8F6F0]">
   <div class="container mx-auto px-4 lg:px-8">
     <div class="text-center mb-12">
-      <h5 class="uppercase tracking-widest text-amber-600 text-sm font-semibold mb-3">Nos expériences incontournables</h5>
-      <h1 class="font-heading text-3xl md:text-4xl font-bold text-text mb-4">Découvrez les destinations qui font la richesse<br />du Bénin, du Togo et du Ghana</h1>
+      @component('components.section-heading', ['kicker' => 'Nos expériences incontournables', 'title' => 'Découvrez les destinations qui font la richesse du Bénin, du Togo et du Ghana'])
+      @endcomponent
     </div>
     @if($circuits->isNotEmpty())
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
