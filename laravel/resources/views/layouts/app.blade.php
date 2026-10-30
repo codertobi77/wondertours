@@ -20,14 +20,14 @@
                     <img src="/Logo_wonder_blanc.png" alt="Wonder Tours and Services" class="h-16 w-auto">
                 </a>
                 <div class="hidden lg:flex items-center space-x-8" id="main-nav">
-                    <a href="/" class="nav-link hover:text-white transition-colors font-medium text-white/80">Accueil</a>
-                    <a href="/a-propos" class="nav-link hover:text-white transition-colors font-medium text-white/80">À propos</a>
-                    <a href="/circuits" class="nav-link hover:text-white transition-colors font-medium text-white/80">Circuits</a>
-                    <a href="/sejours" class="nav-link hover:text-white transition-colors font-medium text-white/80">Séjours</a>
-                    <a href="/hotels" class="nav-link hover:text-white transition-colors font-medium text-white/80">Hôtels</a>
-                    <a href="/temoignages" class="nav-link hover:text-white transition-colors font-medium text-white/80">Témoignages</a>
-                    <a href="/blog" class="nav-link hover:text-white transition-colors font-medium text-white/80">Blog</a>
-                    <a href="/contact" class="nav-link hover:text-white transition-colors font-medium text-white/80">Contact</a>
+                                        <a href="/" data-i18n="nav.home" class="nav-link hover:text-white transition-colors font-medium text-white/80">Accueil</a>
+                    <a href="/a-propos" data-i18n="nav.about" class="nav-link hover:text-white transition-colors font-medium text-white/80">À propos</a>
+                    <a href="/circuits" data-i18n="nav.circuits" class="nav-link hover:text-white transition-colors font-medium text-white/80">Circuits</a>
+                    <a href="/sejours" data-i18n="nav.sejours" class="nav-link hover:text-white transition-colors font-medium text-white/80">Séjours</a>
+                    <a href="/hotels" data-i18n="nav.hotels" class="nav-link hover:text-white transition-colors font-medium text-white/80">Hôtels</a>
+                    <a href="/temoignages" data-i18n="nav.temoignages" class="nav-link hover:text-white transition-colors font-medium text-white/80">Témoignages</a>
+                    <a href="/blog" data-i18n="nav.blog" class="nav-link hover:text-white transition-colors font-medium text-white/80">Blog</a>
+                    <a href="/contact" data-i18n="nav.contact" class="nav-link hover:text-white transition-colors font-medium text-white/80">Contact</a>
                 </div>
                 <div class="hidden lg:flex items-center space-x-4">
                     <button id="cart-btn" class="relative flex items-center space-x-2 text-white hover:text-white/80 transition-all duration-300">
@@ -35,9 +35,9 @@
                     </button>
                 </div>
                 <div class="hidden lg:flex items-center space-x-2 pl-4 border-l border-white/30">
-                    <button class="font-medium text-white font-bold">FR</button>
+                    <button data-lang="fr" onclick="setLang('fr')" class="font-medium text-white font-bold lang-btn">FR</button>
                     <span class="text-white/70">|</span>
-                    <button class="font-medium text-white/70 hover:text-white">EN</button>
+                    <button data-lang="en" onclick="setLang('en')" class="font-medium text-white/70 hover:text-white lang-btn">EN</button>
                 </div>
                 <div class="lg:hidden flex items-center space-x-3">
                     <button id="mobile-menu-btn" class="p-2 text-white" aria-label="Toggle menu">
@@ -152,6 +152,31 @@
             // shimmer progress bar
             if (header) { /* scrolled state already handled */ }
         })();
+        // i18n minimal FR/EN avec dictionnaire de navigation
+        const I18N = {
+            fr: { 'nav.home':'Accueil','nav.about':'À propos','nav.circuits':'Circuits','nav.sejours':'Séjours','nav.hotels':'Hôtels','nav.temoignages':'Témoignages','nav.blog':'Blog','nav.contact':'Contact' },
+            en: { 'nav.home':'Home','nav.about':'About','nav.circuits':'Tours','nav.sejours':'Stays','nav.hotels':'Hotels','nav.temoignages':'Testimonials','nav.blog':'Blog','nav.contact':'Contact' }
+        };
+        function setLang(lang) {
+            localStorage.setItem('wt-locale', lang);
+            const dict = I18N[lang];
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                const k = el.getAttribute('data-i18n');
+                if (dict[k]) el.innerHTML = dict[k];
+            });
+            document.querySelectorAll('.lang-btn').forEach(function(b) {
+                if (b.getAttribute('data-lang') === lang) {
+                    b.classList.add('font-bold','text-white');
+                    b.classList.remove('text-white/70');
+                } else {
+                    b.classList.remove('font-bold');
+                    b.classList.add('text-white/70');
+                }
+            });
+        }
+        window.addEventListener('load', function() {
+            setLang(localStorage.getItem('wt-locale') || 'fr');
+        });
     </script>
     @stack('scripts')
 </body>

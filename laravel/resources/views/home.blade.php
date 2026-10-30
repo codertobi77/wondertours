@@ -3,9 +3,13 @@
 @section('content')
 
 <!-- Hero -->
-<section class="relative bg-[#17221F] text-white">
-  <img src="/photos_site wonder_tours/IMG-20260805-WA0065.jpg" alt="" class="absolute inset-0 w-full h-full object-cover opacity-40">
-  <div class="absolute inset-0 bg-black/60"></div>
+<section class="relative bg-[#17221F] text-white min-h-[500px]">
+  <div id="hero-carousel" class="absolute inset-0">
+    @foreach(range(1,4) as $i)
+      <img src="/images/hero/hero-{{ $i }}.jpg" alt="Hero {{ $i }}" class="hero-slide absolute inset-0 w-full h-full object-cover opacity-40 transition-opacity duration-1000 {{ $i===1?'opacity-40':'opacity-0' }}" data-slide="{{ $i-1 }}">
+    @endforeach
+    <div class="absolute inset-0 bg-black/60"></div>
+  </div>
   <div class="relative z-10 container mx-auto px-4 lg:px-8 py-24 text-center max-w-4xl mx-auto">
     <h5 class="uppercase tracking-widest text-amber-400 text-sm font-semibold mb-6">EXPLOREZ LE BÉNIN, LE TOGO ET LE GHANA AUTREMENT</h5>
     <h1 class="font-heading text-4xl md:text-6xl font-bold mb-6">Découvrez le Bénin, le Togo et le Ghana à travers<br />des expériences authentiques.</h1>
@@ -14,7 +18,34 @@
       <a href="/circuits" class="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 rounded-full font-medium transition">Découvrir nos circuits</a>
       <a href="/contact" class="border border-white text-white px-8 py-3 rounded-full font-medium hover:bg-white/10 transition">Planifier mon voyage</a>
     </div>
+    <div class="flex justify-center gap-2 mt-8">
+      @foreach(range(0,3) as $i)
+        <button data-dot="{{ $i }}" class="w-2.5 h-2.5 rounded-full bg-white/40 hover:bg-white transition" onclick="goToSlide({{ $i }})"></button>
+      @endforeach
+    </div>
   </div>
+  <script>
+    (function() {
+      const slides = document.querySelectorAll('.hero-slide');
+      let current = 0;
+      let timer;
+      function show(i) {
+        current = (i + slides.length) % slides.length;
+        slides.forEach((s, idx) => {
+          s.style.opacity = (idx === current) ? '0.4' : '0';
+          s.classList.toggle('opacity-40', idx === current);
+          s.classList.toggle('opacity-0', idx !== current);
+        });
+        document.querySelectorAll('[data-dot]').forEach((d, idx) => {
+          d.classList.toggle('bg-white', idx === current);
+          d.classList.toggle('bg-white/40', idx !== current);
+        });
+      }
+      window.goToSlide = function(i) { clearInterval(timer); show(i); timer = setInterval(() => show(current+1), 5000); };
+      timer = setInterval(() => show(current+1), 5000);
+      show(0);
+    })();
+  </script>
 </section>
 
 <!-- Experience section -->
