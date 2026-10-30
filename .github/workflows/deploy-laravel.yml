@@ -1,4 +1,5 @@
 # Déploiement Laravel sur LWS Perso — frontend Blade + API Laravel.
+# composer install et optimize sont à faire manuellement sur le serveur (LWS).
 #
 # Le frontend Blade est servi par Laravel au runtime ;
 # l'API (/api/*) est servie par les controllers Laravel (Eloquent).
@@ -70,10 +71,6 @@ jobs:
           php-version: "8.3"
           extensions: pdo_pgsql, mbstring, curl, openssl, tokenizer, xml, ctype, json, bcmath, fileinfo
 
-      - name: Installer les dépendances PHP (Composer)
-        working-directory: laravel
-        run: composer install --no-dev --optimize-autoloader --no-interaction
-
       - name: Écrire le .env Laravel
         working-directory: laravel
         run: |
@@ -110,13 +107,6 @@ jobs:
           GITHUB_REPO=codertobi77/wondertours
           EOF
 
-      - name: Optimiser Laravel
-        working-directory: laravel
-        run: |
-          php artisan config:cache
-          php artisan route:cache
-          php artisan view:cache
-
       - name: Build assets Vite (Tailwind/CSS)
         working-directory: laravel
         run: bun install && bun run build
@@ -150,7 +140,7 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
         run: |
           TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
-          lftp "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; mirror -R --delete --parallel=2 --verbose=2 --exclude=node_modules --exclude=.git --exclude=tests laravel/ ./; quit"
+          lftp "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; mirror -R --delete --parallel=2 --verbose=2 --exclude=node_modules --exclude=.git --exclude=vendor --exclude=tests laravel/ ./; quit"
 
       - name: Smoke de l'API en production
         env:
