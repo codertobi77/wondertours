@@ -116,16 +116,12 @@ jobs:
           php artisan route:cache
           php artisan view:cache
 
-      - name: Build statique Next.js (export → out/)
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-        run: bun run build
+      - name: Build assets Vite (React/Inertia)
+        working-directory: laravel
+        run: bun install && bun run build
 
-      - name: Copier le build dans laravel/public/
-        run: |
-          rm -rf laravel/public/_next laravel/public/dashboard* laravel/public/circuits* laravel/public/blog* laravel/public/*.html laravel/public/*.txt laravel/public/sitemap.xml laravel/public/robots.txt 2>/dev/null || true
-          cp -r out/* laravel/public/
-          cp public/.htaccess laravel/public/.htaccess
+      - name: Copier le .htaccess Laravel
+        run: cp laravel/public/.htaccess laravel/public/.htaccess 2>/dev/null || true
 
       - name: Installer lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp

@@ -4,7 +4,6 @@
     </IfModule>
 
     RewriteEngine On
-    RewriteBase /
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -14,24 +13,12 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-    # Prevent mod_dir from redirecting /dashboard → /dashboard/
-    DirectorySlash Off
-
-    # Dashboard editing pages: /dashboard/<resource>/<uuid> → sentinelle
-    RewriteRule ^dashboard/([a-z-]+)/[0-9a-fA-F-]{36}/?$ dashboard/$1/_.html [L]
-    RewriteRule ^dashboard/([a-z-]+)/[0-9a-fA-F-]{36}\.txt$ dashboard/$1/_.txt [L]
-
-    # Clean URLs: /chemin → /chemin.html (si le fichier existe)
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME}.html -f
-    RewriteRule ^(.*)$ $1.html [L]
-
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send Requests To Front Controller (Laravel) for /api/* and non-file routes...
+    # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
