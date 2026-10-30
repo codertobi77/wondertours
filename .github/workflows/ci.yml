@@ -114,7 +114,6 @@ jobs:
       DB_DATABASE: wondertours_test
       DB_USERNAME: wondertours
       DB_PASSWORD: wondertours
-      APP_KEY: base64:dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleQ==
       AUTH_SECRET: secret-ci-wondertours-jamais-en-production
     steps:
       - uses: actions/checkout@v4
@@ -137,7 +136,6 @@ jobs:
           sed -i 's/DB_DATABASE=.*/DB_DATABASE=wondertours_test/' .env
           sed -i 's/DB_USERNAME=.*/DB_USERNAME=wondertours/' .env
           sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=wondertours/' .env
-          sed -i 's/APP_KEY=.*/APP_KEY=base64:dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleQ==/' .env
           sed -i 's/AUTH_SECRET=.*/AUTH_SECRET=secret-ci-wondertours-jamais-en-production/' .env
 
       - name: Générer la clé
