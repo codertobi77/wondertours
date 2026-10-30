@@ -71,3 +71,4 @@ skills-lock.json
 /laravel/public/build
 /laravel/.phpunit.cache
 /laravel/.phpunit.result.cache
+.deploy-root/
