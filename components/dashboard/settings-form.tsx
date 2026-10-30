@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save, Globe, Mail, Phone, MapPin, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { readApiError } from "@/components/dashboard/api-error";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 interface SettingField {
   key: string;
@@ -149,6 +150,8 @@ export function SettingsForm({ initial }: { initial: Record<string, string> }) {
           </Card>
         ))}
       </div>
+
+      <ProgressBar active={saving} label="Enregistrement en cours…" />
 
       {feedback && (
         <p

@@ -2,6 +2,7 @@
 
 import { Bell, Search, LogOut, X, Check, AlertCircle, Info, Menu, ChevronDown, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { useState } from "react";
 import type { Session } from "@/lib/auth";
 
@@ -151,6 +152,11 @@ export function Header({ onMenuClick, user }: HeaderProps) {
             )}
             {publishMsg && (
               <span className="text-xs text-gray-600 max-w-[200px] truncate">{publishMsg}</span>
+            )}
+            {publishing && (
+              <div className="w-24">
+                <ProgressBar active={publishing} />
+              </div>
             )}
 
             {/* Notifications */}
