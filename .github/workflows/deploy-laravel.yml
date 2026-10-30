@@ -121,6 +121,11 @@ jobs:
         working-directory: laravel
         run: bun install && bun run build
 
+      - name: Nettoyer les dépendances côté serveur (non nécessaires à l'exécution)
+        run: |
+          rm -rf laravel/node_modules
+          rm -rf laravel/.next laravel/out laravel/next-env.d.ts
+
       - name: Copier le .htaccess Laravel
         run: cp laravel/public/.htaccess laravel/public/.htaccess 2>/dev/null || true
 
@@ -145,7 +150,7 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
         run: |
           TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
-          lftp "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; mirror -R --delete --parallel=2 --verbose=2 laravel/ ./; quit"
+          lftp "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; mirror -R --delete --parallel=2 --verbose=2 --exclude=node_modules --exclude=.git --exclude=tests laravel/ ./; quit"
 
       - name: Smoke de l'API en production
         env:
