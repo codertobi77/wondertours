@@ -27,7 +27,8 @@
           <div class="flex justify-between"><span class="text-text-secondary">Participants</span><span class="font-medium text-text">{{ $circuit->min_participants }} – {{ $circuit->max_participants }}</span></div>
           <div class="flex justify-between"><span class="text-text-secondary">Difficulté</span><span class="font-medium text-text">{{ $circuit->difficulty }}</span></div>
         </div>
-        <a href="/contact" class="block w-full text-center bg-amber-600 text-white py-3 rounded-full font-medium hover:bg-amber-700 transition">Planifier mon voyage</a>
+        <a href="/contact" class="block w-full text-center bg-amber-600 text-white py-3 rounded-full font-medium hover:bg-amber-700 transition mb-2">Planifier mon voyage</a>
+        <button onclick="addToCart('{{ $circuit->title }}')" class="block w-full text-center border border-amber-600 text-amber-600 py-3 rounded-full font-medium hover:bg-amber-600/10 transition">Ajouter à ma réservation</button>
       </div>
     </div>
   </div>
