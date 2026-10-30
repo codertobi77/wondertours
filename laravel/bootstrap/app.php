@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->web(append: [
+            \App\Http\Middleware\HandleInertiaRequests::class,
+        ]);
         $middleware->alias([
             'jwt.auth' => \App\Http\Middleware\JwtAuth::class,
             'require.role' => \App\Http\Middleware\RequireRole::class,

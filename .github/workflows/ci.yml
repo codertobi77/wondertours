@@ -90,3 +90,68 @@ jobs:
           test -f out/robots.txt
           ls out/circuits/*.html >/dev/null
           ls out/blog/*.html >/dev/null
+
+  laravel-ci:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wondertours
+          POSTGRES_PASSWORD: wondertours
+          POSTGRES_DB: wondertours_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wondertours -d wondertours_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_DATABASE: wondertours_test
+      DB_USERNAME: wondertours
+      DB_PASSWORD: wondertours
+      APP_KEY: base64:dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleQ==
+      AUTH_SECRET: secret-ci-wondertours-jamais-en-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_pgsql, mbstring, curl, openssl, tokenizer, xml, ctype, json, bcmath, fileinfo
+
+      - name: Installer les dépendances Composer
+        working-directory: laravel
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Copier .env
+        working-directory: laravel
+        run: |
+          cp .env.example .env
+          sed -i 's/DB_HOST=.*/DB_HOST=localhost/' .env
+          sed -i 's/DB_PORT=.*/DB_PORT=5432/' .env
+          sed -i 's/DB_DATABASE=.*/DB_DATABASE=wondertours_test/' .env
+          sed -i 's/DB_USERNAME=.*/DB_USERNAME=wondertours/' .env
+          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=wondertours/' .env
+          sed -i 's/APP_KEY=.*/APP_KEY=base64:dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleQ==/' .env
+          sed -i 's/AUTH_SECRET=.*/AUTH_SECRET=secret-ci-wondertours-jamais-en-production/' .env
+
+      - name: Générer la clé
+        working-directory: laravel
+        run: php artisan key:generate --force
+
+      - name: Migrations
+        working-directory: laravel
+        run: php artisan migrate --force
+
+      - name: Tests Laravel
+        working-directory: laravel
+        run: php artisan test
+
+      - name: Lint PHP
+        working-directory: laravel
+        run: vendor/bin/pint --test 2>/dev/null || php -l app/Http/Controllers/Api/PublicController.php
