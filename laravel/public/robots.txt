@@ -1,8 +1,0 @@
-User-Agent: *
-Allow: /
-Disallow: /api/
-Disallow: /dashboard/
-Disallow: /_next/
-Disallow: /admin/
-
-Sitemap: https://wondertoursandservices.com/sitemap.xml

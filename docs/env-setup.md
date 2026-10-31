@@ -1,97 +1,99 @@
 # Configuration des variables d'environnement
 
-Les fichiers `.env*` sont gitignorés. Next.js/Bun chargent `.env.local` (priorité) puis `.env` ; en production, les variables vivent dans les secrets GitHub (déploiement LWS — cf. ci-dessous) ou côté Vercel (repli).
+Architecture cible :
+- **Frontend Next.js** → Vercel (`https://wondertoursandservices.com`)
+- **Backend API PHP** → LWS Perso (`https://api.wondertoursandservices.com`)
+- **Base de données** → PostgreSQL Aiven
+
+Les fichiers `.env*` sont gitignorés. Next.js/Bun chargent `.env.local` (priorité) puis `.env` ;
+en production, les variables vivent dans les secrets GitHub (déploiement LWS) ou côté Vercel.
 
 ## Variables
 
 ### `DATABASE_URL` — requis
 
-URI PostgreSQL. Local : `postgres://user:pass@localhost:5432/wondertours` (sans ssl). Aiven : `postgres://…?sslmode=require` (le paramètre est neutralisé au runtime, cf. `lib/pg-adapter.ts`).
-
-### `DATABASE_POOL_MAX` — optionnel
-
-Plafond de connexions serveur ouvertes par process (défaut 2). Aiven Hobbyist n'offre que ~5 slots applicatifs au total (`max_connections=20`, dont 3 réservés aux superusers et ~13 consommés par les workers Aiven) — ne pas l'augmenter sans vérifier `SHOW max_connections`. Cf. `lib/pg-adapter.ts`.
+URI PostgreSQL. Local : `postgres://user:pass@localhost:5432/wondertours` (sans ssl).
+Aiven : `postgres://…?sslmode=require` (le paramètre est neutralisé au runtime, cf. `lib/pg-adapter.ts`).
 
 ### `AUTH_SECRET` — requis (dashboard)
 
 Secret de signature des sessions JWT du dashboard (cookie `wt_session`, 7 jours).
+**Doit être identique sur Vercel et LWS** pour que les sessions soient compatibles entre les deux stacks.
 
 ```bash
 openssl rand -base64 32
 ```
 
-Sans cette variable, la connexion au dashboard est impossible (les tokens ne peuvent être ni signés ni vérifiés).
+Sans cette variable, la connexion au dashboard est impossible.
 
 ### `ADMIN_EMAIL` / `ADMIN_PASSWORD` — recommandé (seed)
 
-Compte administrateur initial créé par `bun run db:seed` :
-
-- si aucun utilisateur n'existe pour `ADMIN_EMAIL`, il est créé admin avec `ADMIN_PASSWORD` (hash bcrypt) ;
-- si l'utilisateur existe déjà, seul son rôle est re-synchronisé — **le mot de passe n'est jamais écrasé** : changer `ADMIN_PASSWORD` après création ne fait rien.
+Compte administrateur initial créé par `bun run db:seed` (cf. `docs/deployment.md`).
 
 ### `EDITOR_EMAIL` / `EDITOR_PASSWORD` — recommandé (seed)
 
-Compte éditeur initial créé par `bun run db:seed` (mêmes règles que l'admin) : créé avec `EDITOR_PASSWORD` (hash bcrypt) s'il n'existe pas ; sinon seul son rôle est re-synchronisé — **le mot de passe n'est jamais écrasé**.
-
-Ce deuxième compte permet de vérifier les accès par rôle : l'éditeur lit et écrit le contenu, mais n'a pas accès à la gestion des comptes (entrée « Utilisateurs » masquée, pages `/dashboard/users**` et API `users/**` réservées à l'admin).
+Compte éditeur initial créé par `bun run db:seed`.
 
 ### `NEXT_PUBLIC_SITE_URL` — optionnel
 
-URL publique utilisée pour les métadonnées (`metadataBase`, canonicals). À défaut, `SITE_CONFIG.url` (`https://wondertoursandservices.com`).
+URL publique utilisée pour les métadonnées (`metadataBase`, canonicals). À défaut,
+`SITE_CONFIG.url` (`https://wondertoursandservices.com`) est utilisée.
+
+### `APP_URL` — recommandé
+
+Base des liens insérés dans les emails (reset, dashboard) **et API fetchée par les pages
+publiques au build de l'export statique** (`lib/content.ts`). Défaut : `https://wondertoursandservices.com`.
 
 ### `IMGBB_API_KEY` — optionnel en local, recommandé en production
 
-Clé du service d'hébergement d'images imgBB (https://api.imgbb.com, compte gratuit). Elle pilote la médiathèque (`lib/services/media.ts` + client `lib/services/imgbb.ts`) :
-
-- **clé définie** : les uploads `POST /api/dashboard/media` partent vers imgBB — `url` est l'URL distante (`https://i.ibb.co/…`), `storagePath` conserve le `delete_url` imgBB (page de suppression manuelle — imgBB n'a pas d'API de suppression) ;
-- **clé absente** : fallback sur le stockage local — parfait en dev/tests ; **persistant sur LWS** (dépôt `uploads/` du mutualisé, servi sous `/uploads/`), mais **non persistant sur Vercel** (FS en lecture seule).
-
-La clé est relue à chaque upload, pas au chargement du module.
+Clé du service d'hébergement d'images imgBB. Pilotage de la médiathèque
+(`lib/services/media.ts` + client `lib/services/imgbb.ts`) :
+- clé définie : uploads vers imgBB (URL distante persistante) ;
+- clé absente : fallback stockage local (`public/uploads/`) — persistant sur LWS,
+  non persistant sur Vercel.
 
 ### `DEEPL_API_KEY` — optionnel
 
-Clé du service de traduction DeepL (`lib/services/deepl.ts`). Elle active la route `POST /api/dashboard/translate` (admin + éditeur), utilisée par le bouton « Traduire en anglais (DeepL) » des formulaires du dashboard (circuit, article blog, témoignage) pour pré-remplir les champs `*En` depuis les champs français. Sans la clé, la route répond `503` ; l'interface publique continue d'utiliser les traductions statiques de `lib/translations.ts`.
+Clé du service de traduction DeepL. Active la route `POST /api/dashboard/translate`.
+Sans la clé, la route répond `503`.
 
 ### `RESEND_API_KEY` — optionnel en local, recommandé en production
 
-Clé du service d'envoi d'emails Resend (https://resend.com — client `lib/services/mailer.ts`, templates `lib/services/mail-templates.ts`). Elle active tous les envois du site :
-
-- **contact** (`POST /api/contact`) : accusé de réception au visiteur + notification interne (destinataires `MAIL_TEAM_EMAIL`, défaut `contact@wondertoursandservices.com`) ;
-- **réservations** (`POST /api/bookings`) : confirmation client (référence `WT-XXXXXX`) + notification interne ; changement de statut (`PATCH /api/dashboard/bookings/[id]/status`) : notification client ;
-- **mot de passe oublié** (`POST /api/auth/forgot-password` puis `/reset-password`) : lien de réinitialisation (token à usage unique, 1 h) + email de confirmation ;
-- **création de compte** (`POST /api/dashboard/users`) : email de bienvenue (jamais le mot de passe en clair).
-
-Sans la clé, chaque envoi est ignoré avec un log `[mail] RESEND_API_KEY absente — email non envoyé` : aucune requête HTTP n'échoue (dégradation gracieuse, même principe que imgBB/DeepL).
+Clé du service d'envoi d'emails Resend. Active tous les envois du site (contact,
+réservations, mot de passe oublié, bienvenue…). Sans la clé, chaque envoi est
+ignoré silencieusement (dégradation gracieuse).
 
 Variables compagnes :
+- `MAIL_FROM` — expéditeur ; défaut `Wonder Tours <onboarding@resend.dev>`.
+- `MAIL_TEAM_EMAIL` — destinataire(s) des notifications internes, séparés par des virgules.
 
-- `MAIL_FROM` — expéditeur ; défaut `Wonder Tours <onboarding@resend.dev>` (domaine de test Resend : ne délivre que vers l'email du compte). En production, utiliser un domaine vérifié, ex. `MAIL_FROM="Wonder Tours <contact@wondertoursandservices.com>"` ;
-- `MAIL_TEAM_EMAIL` — destinataire(s) des notifications internes, séparés par des virgules ; défaut `SITE_CONFIG.contact.email` ;
-- `APP_URL` — base des liens insérés dans les emails (reset, dashboard) **et API fetchée par les pages publiques au build de l'export statique** ; défaut `NEXT_PUBLIC_SITE_URL` puis `https://wondertoursandservices.com` ; en local : `http://localhost:8099` (API PHP).
-- `DEV_API_URL` — cible du proxy `/api/*` de `next dev` vers l'API PHP locale (défaut `http://127.0.0.1:8099`).
+### `DEV_API_URL` — dev uniquement
 
-## Production (LWS)
+Cible du proxy `/api/*` de `next dev` vers l'API PHP locale
+(`php -S 127.0.0.1:8099 router-dev.php`). Défaut : `http://127.0.0.1:8099`.
 
-Aucune variable n'est posée à la main sur le serveur : le workflow de déploiement ([`.github/workflows/deploy-lws.yml`](deployment-lws.md) §2) lit les **secrets GitHub** du dépôt, écrit un `.env` éphémère sur le runner et génère `php-api/config.local.php` (gitignoré, perms 600, uploadé par FTP — la seule config du serveur).
+## Production — Vercel (frontend)
 
-Secrets requis : `FTP_HOST` / `FTP_USER` / `FTP_PASSWORD`, `DATABASE_URL` (Aiven), `AUTH_SECRET`, `APP_URL`, `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Optionnels (fonctionnalités dégradées sinon) : `EDITOR_EMAIL` / `EDITOR_PASSWORD`, `RESEND_API_KEY`, `DEEPL_API_KEY`, `IMGBB_API_KEY` — liste détaillée et rôles : [`deployment-lws.md`](deployment-lws.md) §1.2.
-
-Ordre de résolution côté serveur (`php-api/lib/Env.php`) : `config.local.php` → variable d'environnement → défauts intégrés.
-
-## Historique : Vercel (repli)
-
-Côté Vercel, au minimum : `DATABASE_URL`, `AUTH_SECRET`, et au premier déploiement `ADMIN_EMAIL` / `ADMIN_PASSWORD` + `EDITOR_EMAIL` / `EDITOR_PASSWORD` si le seed doit créer les comptes initiaux :
+Au minimum côté Vercel : `DATABASE_URL`, `AUTH_SECRET`, `APP_URL`.
+Recommandées : `IMGBB_API_KEY`, `DEEPL_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM`.
 
 ```bash
+bunx vercel env add DATABASE_URL production
 bunx vercel env add AUTH_SECRET production
+bunx vercel env add APP_URL production
 ```
 
-Recommandées :
+## Production — LWS (API PHP)
 
-```bash
-bunx vercel env add IMGBB_API_KEY production   # uploads média persistants (sinon fallback local non persistant sur Vercel)
-bunx vercel env add DEEPL_API_KEY production   # optionnel : bouton « Traduire en anglais » du dashboard
-bunx vercel env add RESEND_API_KEY production  # emails transactionnels (contact, réservations, reset, bienvenue)
-# puis, avec un domaine vérifié dans Resend :
-bunx vercel env add MAIL_FROM production        # ex. "Wonder Tours <contact@wondertoursandservices.com>"
-```
+Aucune variable n'est posée à la main sur le serveur : le workflow de déploiement
+(`.github/workflows/deploy-lws.yml`) lit les **secrets GitHub** du dépôt, écrit
+un `.env` éphémère sur le runner et génère `php-api/config.local.php`
+(gitignoré, perms 600, uploadé par FTP — la seule config du serveur).
+
+Secrets requis : `FTP_HOST` / `FTP_USER` / `FTP_PASSWORD`, `DATABASE_URL` (Aiven),
+`AUTH_SECRET`, `APP_URL`, `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Optionnels :
+`EDITOR_EMAIL` / `EDITOR_PASSWORD`, `RESEND_API_KEY`, `DEEPL_API_KEY`,
+`IMGBB_API_KEY` — liste détaillée et rôles : [`deployment-lws.md`](deployment-lws.md) §1.2.
+
+Ordre de résolution côté serveur (`php-api/lib/Env.php`) :
+`config.local.php` → variable d'environnement → défauts intégrés.

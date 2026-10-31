@@ -1,10 +1,14 @@
 "use client";
 
 /**
- * Client HTTP du dashboard — l'API PHP same-origin `/api/*` remplace les
- * Server Components Prisma. L'autorisation réelle reste côté API (chaque
- * requête y est re-vérifiée via le cookie wt_session) ; le client ne fait
- * qu'afficher et rediriger.
+ * Client HTTP du dashboard — l'API PHP est servie sur LWS Perso
+ * (https://api.wondertoursandservices.com) et jointe via le proxy Vercel
+ * (/api/* → api.wondertoursandservices.com). Depuis le navigateur, les
+ * appels sont de même origine : pas de CORS requis, le cookie wt_session
+ * est envoyé avec chaque requête.
+ *
+ * L'autorisation réelle reste côté API (chaque requête y est re-vérifiée
+ * via le cookie wt_session) ; le client ne fait qu'afficher et rediriger.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -23,7 +27,7 @@ export class ApiError extends Error {
   }
 }
 
-/** fetch JSON vers l'API ; toute réponse non-OK lève une ApiError lisible. */
+/** fetch JSON vers l'API (chemin relatif /api/*, proxy par Vercel). */
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit
@@ -64,7 +68,7 @@ export interface ApiData<T> {
 
 /**
  * GET + état de chargement. 401 (session expirée/absente) → redirection
- * vers /dashboard/login, comme l'ancien proxy.ts côté serveur.
+ * vers /dashboard/login.
  */
 export function useApiData<T>(path: string): ApiData<T> {
   const router = useRouter();
@@ -78,9 +82,6 @@ export function useApiData<T>(path: string): ApiData<T> {
 
   useEffect(() => {
     let cancelled = false;
-    // Pas de setState synchrone ici (react-hooks/set-state-in-effect) :
-    // le retour à « loading » est fait par reload() côté gestionnaire
-    // d'événement ; pendant un refetch, l'état précédent reste affiché.
     apiFetch<T>(path)
       .then((data) => {
         if (!cancelled) setState({ data, error: null, loading: false, status: 200 });

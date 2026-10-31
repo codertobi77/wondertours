@@ -58,17 +58,5 @@ next-env.d.ts
 /.windsurf/
 skills-lock.json
 
-# Laravel (backend)
-/laravel/vendor/
-/laravel/.env
-/laravel/.env.backup
-/laravel/.env.production
-/laravel/storage/*.key
-/laravel/storage/pail/
-/laravel/storage/logs/
-/laravel/public/storage
-/laravel/public/hot
-/laravel/public/build
-/laravel/.phpunit.cache
-/laravel/.phpunit.result.cache
+# LWS packaging output (ancien, conservé pour compatibilité)
 .deploy-root/

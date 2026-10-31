@@ -1,36 +1,44 @@
-# Déploiement continu vers LWS (mutualisé Perso) via FTP/lftp.
+# Déploiement continu de l'API PHP vers LWS (mutualisé Perso) via FTP/lftp.
+#
+# Le frontend Next.js est déployé séparément sur Vercel (import GitHub, push
+# auto sur master). Ce workflow ne déploie que l'API PHP (php-api/) sous
+# htdocs/api.wondertoursandservices.com/api/ (document root du sous-domaine
+# api.wondertoursandservices.com sur LWS Perso) et applique les migrations
+# Prisma sur Aiven.
 #
 # Déclenchement :
-#   - automatique : à chaque CI verte portant sur master (workflow_run) ;
+#   - automatique : à chaque CI verte sur master (workflow_run) ;
 #   - manuel : workflow_dispatch (onglet Actions).
 #
-# Ordre (l'API reste disponible pendant la mise à jour des pages) :
+# Ordre (l'API reste disponible pendant la mise à jour) :
 #   1. migrations PostgreSQL (prisma migrate deploy, base Aiven) ;
 #   2. php-api/config.local.php généré depuis les secrets (gitignoré,
 #      uploadé par lftp — c'est la config du serveur) ;
-#   3. build statique : les pages publiques fetchent l'API déployée
-#      (APP_URL) au build, repli lib/data/* si elle est indisponible ;
-#   4. upload API → public_html/api/ (routeur .htaccess inclus) ;
-#   5. upload frontend → public_html/ (mirror --delete : retire les pages
-#      périmées, préserve /api, /uploads et /.well-known) ;
-#   6. smoke des 39 routes du contrat sur le site en production.
+#   3. upload API → htdocs/api.wondertoursandservices.com/api/
+#      (routeur .htaccess inclus) ;
+#   4. smoke des 39 routes du contrat sur https://api.wondertoursandservices.com.
 #
 # Secrets requis (Settings → Secrets and variables → Actions) :
 #   FTP_HOST, FTP_USER, FTP_PASSWORD   accès FTP cPanel LWS
 #   DATABASE_URL                       PostgreSQL Aiven (sslmode=require)
 #   AUTH_SECRET                        secret JWT (identique à Vercel —
 #                                      sessions compatibles entre stacks)
-#   APP_URL                            https://wondertoursandservices.com
+#   APP_URL                            https://wondertoursandservices.com —
+#                                      base des liens emails + cible du smoke
 #   ADMIN_EMAIL, ADMIN_PASSWORD        compte admin (smoke + login)
 # Optionnels (fonctionnalités dégradées sinon, jamais bloquants) :
 #   RESEND_API_KEY, DEEPL_API_KEY, IMGBB_API_KEY,
 #   EDITOR_EMAIL, EDITOR_PASSWORD (checks éditeur du smoke)
 
-name: Deploy LWS
+name: Deploy PHP API LWS
 
-# DEPRECATED: remplacé par deploy-laravel.yml
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types: [content-updated]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
 
 concurrency:
   group: deploy-lws
@@ -105,9 +113,6 @@ jobs:
           EDITOR_EMAIL=${{ secrets.EDITOR_EMAIL }}
           EDITOR_PASSWORD=${{ secrets.EDITOR_PASSWORD }}
           EOF
-        # .env* est gitignoré, le runner est jetable. Une clé absente
-        # s'écrit vide : gen-config-local.php l'ignore, le smoke n'active
-        # pas les checks correspondants (emails, imgBB, DeepL, éditeur).
 
       - name: Installer les dépendances
         run: bun install --frozen-lockfile
@@ -115,7 +120,7 @@ jobs:
       - name: Générer le client Prisma
         run: bun run db:generate
 
-      - name: Appliquer les migrations (prisma migrate deploy)
+      - name: Appliquer les migrations (prisma migrate deploy) sur Aiven
         run: bun run db:deploy
         # Toujours en premier : le schéma Aiven est migré avant que le
         # nouveau code ne soit uploadé (l'API PHP sert ce même schéma).
@@ -125,22 +130,6 @@ jobs:
         # Lit le .env ci-dessus (aucune valeur affichée) et écrit
         # php-api/config.local.php (gitignoré, perms 600).
 
-      - name: Compresser les images (idempotent)
-        run: bun scripts/compress-images.ts
-        # Ne retraite que les fichiers nouveaux/modifiés (marqueur
-        # scripts/.image-compression.json) — aucune perte de génération.
-
-      - name: Build statique (export → out/)
-        run: bun run build
-        # APP_URL (chargé du .env) : fetch du contenu au build depuis
-        # l'API déployée ; les pages sont statiques, il n'y a aucun
-        # serveur Node en production.
-
-      - name: Copier le .htaccess racine dans l'export
-        run: cp public/.htaccess out/.htaccess
-        # Le build copie public/ → out/ ; le cp garantit le .htaccess
-        # de façon déterministe (URLs propres + sentinelle dashboard).
-
       - name: Installer lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
@@ -149,48 +138,30 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        # ⚠ lftp : pas de continuations « \ » (une commande = une ligne) et
-        # --parallel[=N] exige la valeur ATTACHÉE (« --parallel 8 » ferait
-        # de « 8 » le répertoire source — cf. runs 40337766902, 40349929572).
-        # Robustesse mutualisé (stall 7 min → « max-retries exceeded », run
-        # 40355948941) : ignore-pasv-address (PASV derrière NAT), timeout
-        # étendu, debug 3 (greeting + erreurs FTP dans le log) et mirror
-        # bavard — chaque transfert est visible.
         run: |
           # Credentials trimmés dans la même étape (évite les retours à la ligne
           # des secrets GitHub et la dépendance au .netrc entre étapes).
           TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
           TU="$(printf '%s' "$FTP_USER" | tr -d '[:space:]')"
           TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:space:]')"
-          lftp -u "$TU","$TP" "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; debug 3; mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ api/; quit"
+          lftp -u "$TU","$TP" "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; debug 3; mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ htdocs/api.wondertoursandservices.com/api/; quit"
         # Inclut php-api/.htaccess (routeur /api/) et config.local.php
         # (secrets du serveur). Exclus : outils de dev uniquement.
         # --delete retire côté serveur les fichiers retirés du dépôt.
+        # Document root LWS : htdocs/api.wondertoursandservices.com/
+        # L'API est servie sous https://api.wondertoursandservices.com/api/*
 
-      - name: Déployer le frontend statique → racine FTP (public_html)
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        run: |
-          TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
-          TU="$(printf '%s' "$FTP_USER" | tr -d '[:space:]')"
-          TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:space:]')"
-          lftp -u "$TU","$TP" "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; debug 3; mirror -R --delete --parallel=2 --verbose=2 -X api -X api/ -X 'api/*' -X uploads -X uploads/ -X 'uploads/*' -X .well-known -X .well-known/ -X '.well-known/*' out/ ./; quit"
-        # --delete retire les pages périmées (slugs renommés…) mais
-        # préserve strictement : /api (étape précédente), /uploads
-        # (médias déposés par l'API PHP) et /.well-known (ACME).
-
-      - name: Smoke de l'API en production
+      - name: Smoke de l'API en production (sous-domaine api.)
         env:
           APP_URL: ${{ secrets.APP_URL }}
-        run: SMOKE_API_ONLY=1 bash scripts/smoke-api.sh "$APP_URL"
-        # Vérifie le contrat complet sur le site en production (public,
-        # écritures, auth admin/éditeur, rôles). Crée puis supprime une
-        # réservation, une demande de contact et un compte de test dans
-        # la base (nettoyage psql via le .env du run) — les emails
-        # transactionnels correspondants partent si RESEND_API_KEY est
-        # configurée.
+          # L'API PHP est servie sur le sous-domaine api.wondertoursandservices.com
+          # (LWS Perso) — le smoke teste le contrat API directement dessus.
+          API_URL: https://api.wondertoursandservices.com
+        run: SMOKE_API_ONLY=1 bash scripts/smoke-api.sh "$API_URL"
+        # Vérifie le contrat complet sur l'API en production (endpoints
+        # publics, écritures, auth admin/éditeur, 401/403, CRUD, rôles). Crée
+        # puis supprime une réservation, une demande de contact et un compte de
+        # test dans la base (nettoyage psql via le .env du run).
 
       - name: Nettoyer les fichiers sensibles du run
         if: always()

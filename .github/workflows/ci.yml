@@ -1,22 +1,21 @@
-# CI Wonder Tours — lint, types, tests (PostgreSQL éphémère) et build.
+# CI Wonder Tours — lint, types, tests (PostgreSQL éphémère) et build Next.js.
 # Aucun secret requis : la base est un conteneur de service frais et les tests
-# créent leurs propres données (préfixes uniques, nettoyage inclus) ; les
-# intégrations externes (imgBB, DeepL) sont mockées ou testent les gardes.
+# créent leurs propres données ; les intégrations externes (imgBB, DeepL, Resend)
+# sont mockées ou testent les gardes.
 name: CI
 
 on:
   push:
     branches: [master]
   pull_request:
-  workflow_dispatch: # déclenchement manuel (onglet Actions) — utile si les
-                      # workflows sont activés après des pushes (forks)
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  laravel-ci:
+  nextjs-ci:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -33,13 +32,38 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DB_CONNECTION: pgsql
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_DATABASE: wondertours_test
-      DB_USERNAME: wondertours
-      DB_PASSWORD: wondertours
+      DATABASE_URL: postgres://wondertours:wondertours@localhost:5432/wondertours_test
       AUTH_SECRET: secret-ci-wondertours-jamais-en-production
+      ADMIN_EMAIL: admin@wondertoursandservices.com
+      ADMIN_PASSWORD: xzcpbh2IrQ6I5skH
+      EDITOR_EMAIL: editor@wondertoursandservices.com
+      EDITOR_PASSWORD: WAWfZG3Uyuevgn08
+      APP_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:8099
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Installer les dépendances
+        run: bun install --frozen-lockfile
+
+      - name: Générer le client Prisma
+        run: bun run db:generate
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Tests (bun test)
+        run: bun test
+
+      - name: Build Next.js (export statique)
+        run: bun run build
+
+  php-api-ci:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -48,41 +72,11 @@ jobs:
           php-version: "8.3"
           extensions: pdo_pgsql, mbstring, curl, openssl, tokenizer, xml, ctype, json, bcmath, fileinfo
 
-      - name: Installer les dépendances Composer
-        working-directory: laravel
-        run: composer install --no-interaction --prefer-dist
-
-      - name: Copier .env
-        working-directory: laravel
+      - name: Lint PHP (syntax)
         run: |
-          cp .env.example .env
-          sed -i 's/DB_HOST=.*/DB_HOST=localhost/' .env
-          sed -i 's/DB_PORT=.*/DB_PORT=5432/' .env
-          sed -i 's/DB_DATABASE=.*/DB_DATABASE=wondertours_test/' .env
-          sed -i 's/DB_USERNAME=.*/DB_USERNAME=wondertours/' .env
-          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=wondertours/' .env
-          sed -i 's/AUTH_SECRET=.*/AUTH_SECRET=secret-ci-wondertours-jamais-en-production/' .env
+          for f in php-api/index.php php-api/router-dev.php php-api/handlers/*.php php-api/lib/*.php; do
+            php -l "$f"
+          done
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
-
-      - name: Build assets Vite
-        working-directory: laravel
-        run: bun install && bun run build
-
-      - name: Générer la clé
-        working-directory: laravel
-        run: php artisan key:generate --force
-
-      - name: Migrations
-        working-directory: laravel
-        run: php artisan migrate --force
-
-      - name: Tests Laravel
-        working-directory: laravel
-        run: php artisan test
-
-      - name: Lint PHP
-        working-directory: laravel
-        run: vendor/bin/pint --test 2>/dev/null || php -l app/Http/Controllers/Api/PublicController.php
+      - name: Test de connexion PHP (syntax only, sans base)
+        run: php -l php-api/test-connexion.php

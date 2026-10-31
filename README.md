@@ -4,9 +4,9 @@
 
 [![CI](https://github.com/codertobi77/wondertours/actions/workflows/ci.yml/badge.svg)](https://github.com/codertobi77/wondertours/actions/workflows/ci.yml)
 
-- **Production** : https://wondertoursandservices.com (LWS — frontend statique + API PHP) ; repli/historique : https://wondertourswebsite.vercel.app
+- **Production** : https://wondertoursandservices.com (Vercel — frontend Next.js) + https://api.wondertoursandservices.com (LWS Perso — API PHP) ; base de données : Aiven (PostgreSQL)
 - **Dépôt** : https://github.com/codertobi77/wondertours (branche `master`)
-- **Documentation** : [`docs/api.md`](docs/api.md) (API), [`env-setup.md`](docs/env-setup.md) (variables d'environnement), [`deployment-lws.md`](docs/deployment-lws.md) (LWS — production), [`deployment.md`](docs/deployment.md) (Vercel — historique)
+- **Documentation** : [`docs/api.md`](docs/api.md) (API), [`env-setup.md`](docs/env-setup.md) (variables d'environnement), [`deployment.md`](docs/deployment.md) (Vercel — frontend), [`deployment-lws.md`](docs/deployment-lws.md) (LWS — API PHP)
 
 ## Présentation
 
@@ -14,7 +14,7 @@
 
 - **Le site vitrine public** — présente l'agence, ses services, ses destinations et ses circuits touristiques ; publie des articles de blog et des témoignages de voyageurs ; et permet aux visiteurs de demander un devis via le formulaire de contact ou de réserver directement en ligne.
 - **Le tableau de bord d'administration** (`/dashboard`) — back-office complet qui permet à l'équipe de gérer tout le contenu du site (circuits, blog, témoignages…), les réservations et demandes de contact reçues, la médiathèque et les comptes utilisateurs, avec trois niveaux d'accès (admin, éditeur, lecteur).
-- **L'API REST** (`php-api/` — PHP 8, zéro dépendance) — consommée par le site public (fetch au build) et par le dashboard : contenus publics en lecture, CRUD complet protégé par session. Le frontend Next.js est exporté en site statique et appelle l'API en same-origin `/api/*`.
+- **L'API REST** (`php-api/` — PHP 8, zéro dépendance) — déployée sur LWS Perso sous `https://api.wondertoursandservices.com`, consommée par le frontend Next.js sur Vercel via proxy (`/api/*` → `api.wondertoursandservices.com`) : contenus publics en lecture, CRUD complet protégé par session.
 
 ## Fonctionnalités
 
@@ -59,12 +59,12 @@ Huit templates HTML (`lib/services/mail-templates.ts`) : accusé de réception c
 | Services externes | DeepL (traduction), imgBB (images) |
 | Tests | Bun test |
 | Runtime / paquets | Bun (build, dev, tests) — PHP ≥ 8.1 en production |
-| CI/CD | GitHub Actions : CI (lint/test/build) + déploiement FTP vers LWS (lftp) |
-| Hébergement | LWS Perso (frontend statique + API PHP) ; Vercel (historique, repli) |
+| CI/CD | GitHub Actions : CI (lint/test/build) + déploiement API PHP FTP vers LWS (lftp) ; frontend déployé sur Vercel via import GitHub |
+| Hébergement | Frontend : Vercel (`wondertoursandservices.com`) ; API PHP : LWS Perso (`api.wondertoursandservices.com`) ; Base : PostgreSQL Aiven |
 
 ## Architecture backend
 
-En production, le backend est l'**API PHP** `php-api/` : le frontend Next.js est exporté en statique (`output: "export"` → `out/`, servi par Apache) et consomme l'API en same-origin `/api/*`. La stack Node/Prisma reste l'**outillage** : migrations, seed, tests.
+En production, le frontend Next.js est déployé sur **Vercel** et consomme l'**API PHP** `php-api/` déployée sur **LWS Perso** (`https://api.wondertoursandservices.com`). Les requêtes `/api/*` depuis le frontend sont proxysées par Vercel vers l'API LWS. La stack Node/Prisma reste l'**outillage** : migrations, seed, tests.
 
 ```
 php-api/index.php            Front controller — routeur /api/* (39 routes)
