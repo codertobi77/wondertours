@@ -1,143 +1,127 @@
-# Déploiement — Frontend Next.js sur Vercel
+# Déploiement — Vercel + Render + Aiven (temporaire, en attendant LWS)
 
-Procédure de déploiement du **frontend Next.js 16** sur **Vercel**, avec le backend API PHP sur LWS Perso et la base de données sur Aiven.
+Déploiement du site Wonder Tours avec :
+- **Frontend Next.js** sur **Vercel** (`https://wondertoursandservices.com`)
+- **Backend API PHP** (`php-api/`) sur **Render** (Docker, temporaire)
+- **Base PostgreSQL** sur **Aiven**
+
+Quand l’hébergeur LWS répondra, le backend pourra revenir sur LWS — voir [`deployment-lws.md`](deployment-lws.md). Le fallback `PHP_API_ORIGIN` dans `next.config.ts` pointe encore vers `api.wondertoursandservices.com` si la variable n’est pas définie.
 
 ## Architecture
 
 ```
-https://wondertoursandservices.com  →  Vercel (frontend Next.js)
-https://api.wondertoursandservices.com  →  LWS Perso (API PHP php-api/)
-PostgreSQL Aiven  →  base de données partagée
+Navigateur → https://wondertoursandservices.com/api/* (Vercel)
+          → rewrite Next.js (PHP_API_ORIGIN) → https://<service>.onrender.com/api/* (Render, PHP)
+Render (PHP, PDO pgsql) → PostgreSQL Aiven (sslmode=require)
 ```
 
-Le frontend appelle l'API via le proxy Next.js (`/api/*` → `https://api.wondertoursandservices.com/api/*`, configuré dans `next.config.ts`). Le cookie `wt_session` est de même origine côté navigateur — pas de CORS requis.
+Le navigateur reste en même origine sur Vercel (proxy `/api/*`) : pas de CORS requis, cookie `wt_session` partagé.
 
 ## Prérequis
 
-- `bun` ≥ 1.x installé localement
-- CLI Vercel authentifiée : `bunx vercel login` (ou import GitHub)
-- Un compte Aiven (console : https://console.aiven.io)
-- Le dépôt GitHub `codertobi77/wondertours` à jour sur `master`
+- `bun` ≥ 1.x localement (Prisma/migrations/seed)
+- Accès Aiven (URI PostgreSQL avec `?sslmode=require`)
+- Compte Vercel (projet lié au repo)
+- Compte Render (Blueprint ou Web Service Docker)
 
 ## 1. Base de données — Aiven PostgreSQL
 
-### 1.1 Créer le service (console Aiven, manuelle)
+### 1.1 Service
 
-1. https://console.aiven.io → **Create service** → **PostgreSQL**
-2. Plan conseillé : **Hobbyist-1** (1 vCPU / 1 Go) pour un petit site vitrine
-3. Cloud/région : proche des utilisateurs (ex. `google-europe-west1` ou `aws-eu-west-1`)
-4. Attendre le statut **Running** (quelques minutes)
-5. Onglet **Overview** → **Service URI** : copier l'URI complète
-   `postgres://avnadmin:…@pg-…aivencloud.com:PORT/db?sslmode=require`
+Créer/récupérer un service PostgreSQL Aiven **Running** et copier la **Service URI** :
+`postgresql://...aivencloud.com:PORT/defaultdb?sslmode=require`
 
-### 1.2 Migrer le schéma (depuis la machine locale)
+### 1.2 Migrations (depuis la machine locale ou CI)
 
 ```bash
 DATABASE_URL="<URI-aiven>" bunx prisma migrate deploy
 ```
 
-Applique toutes les migrations de `prisma/migrations/` dans l'ordre (la config
-`prisma7.config.ts` lit `DATABASE_URL` de l'environnement).
+La config `prisma7.config.ts` lit `DATABASE_URL` de l’environnement. Le backend PHP consomme le même schéma via PDO (aucune migration côté PHP).
 
-### 1.3 Seed des données initiales
+### 1.3 Seed (optionnel si données déjà présentes)
 
 ```bash
 DATABASE_URL="<URI-aiven>" bun run db:seed
 ```
 
-Le seed (`prisma/seed.ts`) fait des `upsert` par slug : il est **rejouable**
-sans dupliquer les données.
+Le seed (`prisma/seed.ts`) utilise des upserts : rejouable sans duplication.
 
-### 1.4 Vérifier
+## 2. Backend API PHP — Render
 
-```bash
-psql "<URI-aiven>" -c "SELECT 'circuits' t, COUNT(*) FROM circuits
-  UNION ALL SELECT 'destinations', COUNT(*) FROM destinations
-  UNION ALL SELECT 'blog_posts', COUNT(*) FROM blog_posts
-  UNION ALL SELECT 'testimonials', COUNT(*) FROM testimonials
-  UNION ALL SELECT 'services', COUNT(*) FROM services
-  UNION ALL SELECT 'settings', COUNT(*) FROM settings;"
-```
+Fichiers prêts dans le repo :
+- `render.yaml` (racine) — Blueprint Render
+- `php-api/Dockerfile` — image `php:8.3-apache`, `pdo_pgsql`, `mod_rewrite`, écoute `$PORT`, routes sous `/api/*`
+- `php-api/.dockerignore`
 
-Compteurs attendus (seed) : circuits ≥ 8, destinations = 6, blog_posts ≥ 8,
-testimonials ≥ 6, services = 4, settings ≥ 9.
+### 2.1 Déploiement
 
-## 2. Hébergement frontend — Vercel
+Option A — **Blueprint** : Render → *New +* → *Blueprint*, connecter le repo GitHub ; Render lit `/render.yaml` (`rootDir: php-api`).
 
-### 2.1 Option A : CLI (recommandée si déjà authentifié)
+Option B — **Web Service (Docker)** : *New +* → *Web Service*, repo GitHub, *Root Directory* = `php-api`, *Environment* = Docker.
 
-```bash
-bunx vercel link                       # rattache le repo au projet Vercel
-echo "<URI-aiven>" | bunx vercel env add DATABASE_URL production
-echo "<secret>" | bunx vercel env add AUTH_SECRET production
-bunx vercel --prod                     # build + déploiement production
-```
+### 2.2 Variables d’environnement Render (Dashboard, ne pas commiter)
 
-Notes :
-- `postinstall: prisma generate` est déjà dans `package.json` → le client
-  Prisma est généré pendant le build Vercel (le dossier généré est gitignoré).
-- Le build ne se connecte **pas** à la base pour compiler (aucune requête
-  au build : pages publiques en `force-dynamic`, contenu fetché depuis l'API
-  LWS au build via `APP_URL`).
-- La région du projet Vercel peut être changée dans Settings → Functions.
+| Variable | Requis | Notes |
+|---|---|---|
+| `DATABASE_URL` | oui | URI Aiven avec `sslmode=require` |
+| `AUTH_SECRET` | oui | Secret JWT HS256 ; garder cohérent avec l’écosystème existant |
+| `APP_URL` | oui | `https://wondertoursandservices.com` (liens emails, etc.) |
+| `SECURE_COOKIES` | recommandé | `true` derrière HTTPS |
+| `RESEND_API_KEY` | optionnel | Emails (best-effort si absent) |
+| `MAIL_FROM` / `MAIL_TEAM_EMAIL` | optionnel | Expéditeur / destinataires notifications |
+| `IMGBB_API_KEY` | optionnel | Médiathèque persistante ; sinon fallback local (éphémère sur conteneur) |
+| `DEEPL_API_KEY` | optionnel | Traduction dashboard ; sinon `503` |
+| `GITHUB_TOKEN` / `GITHUB_REPO` | optionnel | Rebuild/déclencheurs selon fonctionnalités activées |
 
-### 2.2 Option B : import GitHub (sans CLI)
+> `config.local.php` est ignoré ; sur Render, toute config passe par les variables d’environnement (`php-api/lib/Env.php`).
 
-1. https://vercel.com/new → importer `codertobi77/wondertours`
-2. Framework preset : **Next.js** (détecté automatiquement, bun détecté)
-3. Environment Variables → ajouter :
-   - `DATABASE_URL` = URI Aiven (Production)
-   - `AUTH_SECRET` = secret JWT (identique à LWS — sessions compatibles)
-   - `APP_URL` = `https://wondertoursandservices.com` (liens emails + fetch contenu au build)
-   - `ADMIN_EMAIL`, `ADMIN_PASSWORD` (seed des comptes initiaux)
-   - `EDITOR_EMAIL`, `EDITOR_PASSWORD` (optionnel)
-   - `RESEND_API_KEY`, `DEEPL_API_KEY`, `IMGBB_API_KEY` (optionnels, dégradation gracieuse)
-4. **Deploy**. Les push suivants sur `master` redéploient automatiquement.
-
-### 2.3 Variables d'environnement complémentaires
-
-- `IMGBB_API_KEY` — héberge les uploads de la médiathèque sur imgBB. Sans elle,
-  la médiathèque retombe sur le stockage local (non persistant sur Vercel).
-- `DEEPL_API_KEY` — active la traduction assistée du dashboard
-  (`POST /api/dashboard/translate`). Sans la clé, la route répond `503`.
-- `NEXT_PUBLIC_SITE_URL` — optionnel, métadonnées ; à défaut
-  `SITE_CONFIG.url` (`https://wondertoursandservices.com`) est utilisée.
-
-## 3. Backend API — LWS Perso (déploiement séparé)
-
-L'API PHP est déployée indépendamment via GitHub Actions
-(`.github/workflows/deploy-lws.yml`) sur `https://api.wondertoursandservices.com`.
-Voir [`docs/deployment-lws.md`](deployment-lws.md).
-
-## 4. Vérification post-déploiement
+### 2.3 Vérification backend
 
 ```bash
-bash scripts/smoke-api.sh https://api.wondertoursandservices.com
+curl -sS https://<service>.onrender.com/
+curl -sS https://<service>.onrender.com/api/settings
+curl -sS "https://<service>.onrender.com/api/circuits"
 ```
 
-Le script crée une demande de contact et une réservation de test, puis les
-supprime de la base via psql (nettoyage automatique — `trap cleanup EXIT`).
+Réponse attendue : JSON. En cas d’erreur DB/auth, consulter les logs Render. Si Aiven utilise une allowlist IP, vérifier l’accès réseau depuis Render.
 
-## 5. Limitations connues
+## 3. Frontend — Vercel
 
-1. **Uploads média** : avec `IMGBB_API_KEY`, les images sont hébergées sur
-   imgBB et persistent en production. Sans la clé, la médiathèque écrit dans
-   `public/uploads/` — en lecture seule sur Vercel, les fichiers sont perdus
-   entre les invocations.
-2. **Suppression imgBB manuelle** : imgBB n'expose pas d'API de suppression.
-3. **Sessions JWT irrévocables** : stateless (7 jours) — désactiver ou
-   rétrograder un utilisateur n'invalide pas ses sessions déjà émises ;
-   faire tourner `AUTH_SECRET` pour tout révoquer.
-4. **Images placeholder** : le seed et les pages utilisent des chaînes
-   `[PHOTO … À REMPLACER]` — à remplacer par de vraies images client.
-5. **metadataBase non défini** (warning build) : définir
-   `NEXT_PUBLIC_SITE_URL` ou `SITE_CONFIG.url` sur le domaine final.
+### 3.1 Variable clé pour Render
 
-## 6. Rollback / mises à jour
+Dans Vercel → *Project* → *Settings* → *Environment Variables* :
 
-- **Nouvelle migration** : `bun run db:migrate` en local → commit
-  `prisma/migrations/` → push → sur Aiven : `DATABASE_URL=<uri> bunx prisma
-  migrate deploy` → Vercel redéploie aussi à chaque push.
-- **Restaurer un déploiement** : Vercel → Deployments → menu ⋯ → **Promote to
-  Production** sur un déploiement antérieur.
-- **Sauvegarde Aiven** : console → service → Backups (rétention selon plan).
+- `PHP_API_ORIGIN` = `https://<service>.onrender.com` (sans `/api`, sans slash final)
+
+Puis redéployer Vercel (push ou *Redeploy*).
+
+### 3.2 Autres variables
+
+- `APP_URL` = `https://wondertoursandservices.com` (recommandé)
+
+Les secrets métier du backend (JWT, Resend, DeepL, imgBB) sont gérés côté Render. N’ajouter sur Vercel que ce dont le frontend/build Next.js a besoin.
+
+## 4. Vérification bout en bout
+
+- `https://wondertoursandservices.com` charge le frontend.
+- Les appels réseau du navigateur vers `/api/*` (même origine Vercel) répondent via le proxy vers Render.
+- Smoke API direct (remplacer l’URL) :
+  ```bash
+  SMOKE_API_ONLY=1 bash scripts/smoke-api.sh https://<service>.onrender.com
+  ```
+  (Le script peut créer/supprimer des données de test ; exécuter en connaissance de cause.)
+
+## 5. Retour vers LWS (quand disponible)
+
+1. Déployer `php-api/` sur LWS (cf. [`deployment-lws.md`](deployment-lws.md)).
+2. Soit remettre `PHP_API_ORIGIN` sur `https://api.wondertoursandservices.com`, soit retirer la variable pour utiliser le fallback.
+3. Redéployer Vercel.
+4. Garder `AUTH_SECRET` et `DATABASE_URL` cohérents entre environnements.
+
+## 6. Limitations / notes
+
+- **Render plan free** : mise en veille possible, cold start au premier appel (temporaire acceptable).
+- **Uploads média** sans `IMGBB_API_KEY` : stockage local conteneur éphémère sur Render.
+- **Secrets** : jamais dans git ; Render/Vercel env vars uniquement.
+- **Migrations** : `prisma migrate deploy` contre Aiven avant de déployer du code dépendant d’un nouveau schéma.

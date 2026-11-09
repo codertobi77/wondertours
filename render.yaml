@@ -1,0 +1,41 @@
+# Render Blueprint — Wonder Tours PHP API (temporary, while waiting for LWS).
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: wondertours-api
+    runtime: docker
+    plan: free # or starter; free sleeps when idle
+    region: frankfurt # proche de cdg/Aiven EU — ajuster si besoin
+    rootDir: php-api
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: TIMEZONE
+        value: UTC
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: APP_URL
+        value: https://wondertoursandservices.com
+      # Secrets à définir dans le dashboard Render (ne pas commiter) :
+      # DATABASE_URL, AUTH_SECRET, RESEND_API_KEY, IMGBB_API_KEY, DEEPL_API_KEY,
+      # GITHUB_TOKEN, GITHUB_REPO, MAIL_FROM, MAIL_TEAM_EMAIL
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: IMGBB_API_KEY
+        sync: false
+      - key: DEEPL_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_TEAM_EMAIL
+        sync: false

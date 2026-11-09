@@ -1,14 +1,15 @@
 import type { NextConfig } from "next";
 
-// Architecture cible :
+// Architecture :
 //  - Frontend Next.js → Vercel (wondertoursandservices.com)
-//  - Backend API PHP  → LWS Perso (api.wondertoursandservices.com)
+//  - Backend API PHP  → Render (temporaire, en attendant LWS) ou LWS Perso
 //  - Base de données  → Aiven (DATABASE_URL)
 //
-// Sur Vercel (VERCEL=1) : les requêtes /api/* sont proxysées vers l'API PHP
-// sur LWS (https://api.wondertoursandservices.com). Le navigateur voit des
-// URLs de même origine (wondertoursandservices.com) — pas de CORS requis,
-// le cookie wt_session est partagé.
+// Sur Vercel (VERCEL=1) : les requêtes /api/* sont proxysées vers l'API PHP.
+// Définir PHP_API_ORIGIN dans Vercel (ex. https://<service>.onrender.com)
+// pour cibler Render ; sans cette variable, repli sur api.wondertoursandservices.com.
+// Le navigateur voit des URLs de même origine — pas de CORS requis, le cookie
+// wt_session est partagé.
 //
 // En développement local : proxy /api/* vers php -S 127.0.0.1:8099
 // (router-dev.php).
@@ -18,12 +19,17 @@ import type { NextConfig } from "next";
 // (même origine).
 const nextConfig: NextConfig = process.env.VERCEL
   ? {
-      // Vercel : réécriture /api/* vers l'API PHP sur LWS (sous-domaine).
+      // Vercel : réécriture /api/* vers l'API PHP (LWS ou Fly.io).
+      // PHP_API_ORIGIN permet de pointer vers un backend temporaire (ex. Fly)
+      // sans modifier le code : https://wondertours-api.fly.dev
       async rewrites() {
+        const origin = (
+          process.env.PHP_API_ORIGIN ?? "https://api.wondertoursandservices.com"
+        ).replace(/\/+$/, "");
         return [
           {
             source: "/api/:path*",
-            destination: "https://api.wondertoursandservices.com/api/:path*",
+            destination: `${origin}/api/:path*`,
           },
         ];
       },

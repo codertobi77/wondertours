@@ -1,0 +1,10 @@
+config.local.php
+uploads/
+logs/
+*.log
+.git
+.gitignore
+.DS_Store
+scripts/
+test-connexion.php
+README*.md

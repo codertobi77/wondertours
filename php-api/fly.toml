@@ -1,0 +1,31 @@
+# Fly.io config for Wonder Tours PHP API (temporary, while waiting for LWS).
+# Deploy from this directory: cd php-api && fly launch --copy-config --name <your-app>
+# Or: fly deploy -c php-api/fly.toml (from repo root, with Dockerfile in php-api context)
+
+app = "wondertours-api" # change if taken; fly launch can pick a unique name
+primary_region = "cdg"   # Paris — adjust if your Aiven/Vercel region differs
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  TIMEZONE = "UTC"
+  # Set secrets via: fly secrets set DATABASE_URL=... AUTH_SECRET=... APP_URL=... (etc.)
+
+[http_service]
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

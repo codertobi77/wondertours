@@ -1,12 +1,14 @@
 # Configuration des variables d'environnement
 
-Architecture cible :
+Architecture (temporaire, en attendant LWS) :
 - **Frontend Next.js** → Vercel (`https://wondertoursandservices.com`)
-- **Backend API PHP** → LWS Perso (`https://api.wondertoursandservices.com`)
+- **Backend API PHP** → Render (service Docker `php-api/`, ex. `https://<service>.onrender.com`)
 - **Base de données** → PostgreSQL Aiven
 
-Les fichiers `.env*` sont gitignorés. Next.js/Bun chargent `.env.local` (priorité) puis `.env` ;
-en production, les variables vivent dans les secrets GitHub (déploiement LWS) ou côté Vercel.
+Architecture cible (quand LWS répondra) : backend sur LWS Perso (`https://api.wondertoursandservices.com`) — cf. [`deployment-lws.md`](deployment-lws.md).
+
+Les fichiers `.env*` sont gitignorés. En local, Next.js/Bun chargent `.env.local` puis `.env` ;
+en production, les variables vivent dans Vercel (frontend) et Render (backend API) / Aiven (base).
 
 ## Variables
 
@@ -74,14 +76,27 @@ Cible du proxy `/api/*` de `next dev` vers l'API PHP locale
 
 ## Production — Vercel (frontend)
 
-Au minimum côté Vercel : `DATABASE_URL`, `AUTH_SECRET`, `APP_URL`.
-Recommandées : `IMGBB_API_KEY`, `DEEPL_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM`.
+Côté Vercel, le frontend proxie `/api/*` vers le backend PHP via `PHP_API_ORIGIN` (cf. `next.config.ts`).
+
+Variables utiles :
+- `PHP_API_ORIGIN` — **requis pour Render** : URL publique du service Render, sans slash final (ex. `https://wondertours-api.onrender.com`). Sans elle, repli sur `https://api.wondertoursandservices.com` (LWS).
+- `APP_URL` — URL publique du site (`https://wondertoursandservices.com`).
 
 ```bash
-bunx vercel env add DATABASE_URL production
-bunx vercel env add AUTH_SECRET production
+bunx vercel env add PHP_API_ORIGIN production
 bunx vercel env add APP_URL production
 ```
+
+> `AUTH_SECRET`/clés API métier sont consommés par le backend PHP (Render). Ne duplique sur Vercel que ce dont le frontend/build Next.js a réellement besoin.
+
+## Production — Render (backend API PHP, temporaire)
+
+Définir les variables dans Render Dashboard (service/Blueprint). Ne pas les commiter.
+
+Requises : `DATABASE_URL` (Aiven, `sslmode=require`), `AUTH_SECRET` (identique à l’écosystème attendu), `APP_URL`.
+Recommandées selon besoins : `SECURE_COOKIES=true`, `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_TEAM_EMAIL`, `IMGBB_API_KEY`, `DEEPL_API_KEY`, `GITHUB_TOKEN`, `GITHUB_REPO`.
+
+Le Blueprint `/render.yaml` déclare des placeholders `sync: false` pour les secrets ; renseigner les valeurs dans Render. L’API écoute sur `$PORT` (géré par `php-api/Dockerfile`).
 
 ## Production — LWS (API PHP)
 
