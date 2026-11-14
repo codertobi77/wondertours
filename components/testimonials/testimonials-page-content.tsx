@@ -8,6 +8,7 @@ import { TestimonialsContent } from "@/components/testimonials/testimonials-cont
 import { useLanguage } from "@/contexts/language-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Testimonial } from "@/lib/data/testimonials";
+import { PublicTestimonialForm } from "@/components/testimonials/public-testimonial-form";
 
 interface TestimonialsPageContentProps {
   /** Tous les témoignages actifs, embarqués dans la page statique. */
@@ -34,6 +35,7 @@ export function TestimonialsPageContent({
   const isFr = locale === "fr";
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const initialPage =
     Number.parseInt(searchParams.get("page") ?? "1", 10) || 1;
@@ -199,11 +201,17 @@ export function TestimonialsPageContent({
               ? "Partagez votre expérience et aidez d'autres voyageurs à découvrir le Bénin avec Wonder Tours and Services."
               : "Share your experience and help other travelers discover Benin with Wonder Tours and Services."}
           </p>
-          <Button variant="primary" size="lg" href="/contact">
+          <Button variant="primary" size="lg" onClick={() => setIsFormOpen(true)}>
             {isFr ? "Partager mon témoignage" : "Share my testimonial"}
           </Button>
         </div>
       </section>
+
+      {/* Public Testimonial Form Modal */}
+      <PublicTestimonialForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+      />
     </>
   );
 }

@@ -12,6 +12,8 @@ import { BlogCard } from "@/components/blog/blog-card";
 import { Button } from "@/components/ui/button";
 import { WHY_CHOOSE_US } from "@/lib/constants";
 import { useLanguage } from "@/contexts/language-context";
+import { useState } from "react";
+import { PublicTestimonialForm } from "@/components/testimonials/public-testimonial-form";
 import type { Circuit } from "@/lib/data/circuits";
 import type { BlogPost } from "@/lib/data/blog";
 import type { Testimonial } from "@/lib/data/testimonials";
@@ -51,6 +53,7 @@ export function HomeContent({
 }: HomeContentProps) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
+  const [isTestimonialFormOpen, setIsTestimonialFormOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -277,9 +280,12 @@ export function HomeContent({
                 <TestimonialCard key={testimonial.id} testimonial={testimonial} />
               ))}
             </div>
-            <div className="text-center mt-12">
+            <div className="text-center mt-12 flex flex-col sm:flex-row gap-4 justify-center">
               <Button variant="outline" size="lg" href="/temoignages">
                 {isFr ? "Voir tous les témoignages" : "View all testimonials"}
+              </Button>
+              <Button variant="primary" size="lg" onClick={() => setIsTestimonialFormOpen(true)}>
+                {isFr ? "Partager mon témoignage" : "Share my testimonial"}
               </Button>
             </div>
           </div>
@@ -347,6 +353,12 @@ export function HomeContent({
 
       <Footer />
       <WhatsAppButton />
+
+      {/* Public Testimonial Form Modal */}
+      <PublicTestimonialForm
+        isOpen={isTestimonialFormOpen}
+        onClose={() => setIsTestimonialFormOpen(false)}
+      />
     </div>
   );
 }

@@ -227,7 +227,7 @@ final class PublicApi
         );
     }
 
-    /** GET /api/testimonials — actifs, filtre featured, q sur nom/texte, tri featured puis date. */
+    /** GET /api/testimonials — actifs ET vérifiés, filtre featured, q sur nom/texte, tri featured puis date. */
     public static function testimonials(): never
     {
         $v = Validator::query();
@@ -237,7 +237,7 @@ final class PublicApi
         $featured = $v->boolQuery('featured');
         $v->fail();
 
-        $where = ['t.is_active = true'];
+        $where = ['t.is_active = true', 't.is_verified = true'];
         $params = [];
         if ($featured !== null) {
             $where[] = $featured ? 't.is_featured = true' : 't.is_featured = false';
@@ -257,6 +257,49 @@ final class PublicApi
             $pageSize,
             static fn (array $row): array => Serial::testimonial($row)
         );
+    }
+
+    /** POST /api/testimonials — création publique d'un témoignage (en attente de validation). */
+    public static function createTestimonial(): never
+    {
+        $v = Validator::json();
+        $v->str('name', 2, 100);
+        $v->optStr('country', 100);
+        $v->reqInt('rating', 1, 5);
+        $v->str('text', 10, 5000);
+        $v->optStr('textEn', 5000);
+        $v->optUuid('circuitId');
+        $v->optStr('avatarUrl', 500);
+        $v->optDateOrEmpty('date');
+        $v->fail();
+
+        $data = $v->d();
+
+        // For public submissions: is_verified = false (pending admin approval), is_active = true
+        $data['is_verified'] = false;
+        $data['is_active'] = true;
+        $data['is_featured'] = false;
+
+        $inserted = Db::one(
+            'INSERT INTO testimonials (name, country, rating, text, text_en, circuit_id, avatar_url, date, is_verified, is_active, is_featured, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+             RETURNING *',
+            [
+                $data['name'],
+                $data['country'] ?? null,
+                $data['rating'],
+                $data['text'],
+                $data['textEn'] ?? null,
+                $data['circuitId'] ?? null,
+                $data['avatarUrl'] ?? null,
+                $data['date'] ?? null,
+                $data['is_verified'],
+                $data['is_active'],
+                $data['is_featured'],
+            ]
+        );
+
+        Http::created(Serial::testimonial($inserted));
     }
 
     private static function blogJoins(): string
