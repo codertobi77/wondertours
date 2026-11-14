@@ -8,11 +8,11 @@ DirectoryIndex index.php
 RewriteEngine On
 RewriteBase /
 
-# Laisser passer les requêtes vers /api/ (gérées par php-api/.htaccess)
-RewriteRule ^api/ - [L]
+# Health check racine
+RewriteRule ^$ /api/index.php [L]
 
-# Health check racine (optionnel)
-RewriteRule ^$ index.php [L]
+# API routes - passer à l'API PHP
+RewriteRule ^api/(.*)$ /api/$1 [L]
 
-# 404 pour tout le reste
+# Tout le reste -> 404 via API
 ErrorDocument 404 /api/index.php
