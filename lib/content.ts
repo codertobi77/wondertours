@@ -110,7 +110,7 @@ function cachedFetchPage<T>(path: string, tag: string): Promise<T[]> {
       return page?.items ?? [];
     },
     [path],
-    { tags: [tag], revalidate: 60 }
+    { tags: [tag], revalidate: 30 }
   )();
 }
 
@@ -119,7 +119,7 @@ function cachedFetchDetail<T>(path: string, tag: string): Promise<T | null> {
   return unstable_cache(
     async () => memoized<T>(path),
     [path],
-    { tags: [tag], revalidate: 60 }
+    { tags: [tag], revalidate: 30 }
   )();
 }
 
