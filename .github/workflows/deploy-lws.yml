@@ -182,6 +182,7 @@ jobs:
             set net:timeout 45;
             set net:max-retries 5;
             chmod 600 htdocs/api.wondertoursandservices.com/api/config.local.php;
+            set cmd:fail-exit false;
             mkdir -p htdocs/api.wondertoursandservices.com/uploads;
             quit
           "
