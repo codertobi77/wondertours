@@ -174,7 +174,7 @@ jobs:
             quit
           "
           
-          # 3. Fixer permissions config.local.php (600) et créer uploads/
+          # 3. Fixer permissions config.local.php (600) — uploads/ existe déjà
           lftp -u "$TU","$TP" "$TH" -e "
             set ftp:ssl-allow true;
             set ssl:verify-certificate no;
@@ -182,8 +182,6 @@ jobs:
             set net:timeout 45;
             set net:max-retries 5;
             chmod 600 htdocs/api.wondertoursandservices.com/api/config.local.php;
-            set cmd:fail-exit false;
-            mkdir -p htdocs/api.wondertoursandservices.com/uploads;
             quit
           "
         # Inclut php-api/.htaccess (routeur /api/) et config.local.php (perms 600)
