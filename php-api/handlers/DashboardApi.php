@@ -152,9 +152,6 @@ final class DashboardApi
             'create' => [Schemas::class, 'blogCategoryCreate'],
             'update' => [Schemas::class, 'blogCategoryUpdate'],
         ]);
-
-        // Publication manuelle : déclenche un rebuild du site (best-effort).
-        Router::post('/api/dashboard/publish', [self::class, 'publish']);
     }
 
     /** Enregistre les 5 routes CRUD d'une ressource dashboard. */
@@ -166,14 +163,6 @@ final class DashboardApi
         Router::get($path . '/{id}', fn (string $id) => Crud::get($resource, $id));
         Router::patch($path . '/{id}', fn (string $id) => Crud::update($resource, $id));
         Router::delete($path . '/{id}', fn (string $id) => Crud::delete($resource, $id));
-    }
-
-    /** POST /api/dashboard/publish — déclenche un rebuild du site (admin+éditeur). */
-    public static function publish(): never
-    {
-        Auth::requireSession(['admin', 'editor']);
-        \WT\External::triggerRebuild(true);
-        Http::ok(['message' => 'Rebuild du site déclenché', 'triggered' => true]);
     }
 
     // ─────────────────────── Règles métier blog (publishedAt) ───────────────────────

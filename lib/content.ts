@@ -1,18 +1,16 @@
 /**
- * Couche de contenu des pages publiques — exécutée AU BUILD (Server
- * Components de l'export statique) contre l'API PHP déployée.
+ * Couche de contenu des pages publiques — exécutée AU RUNTIME (Server
+ * Components avec `noStore` pour le SSR dynamique) contre l'API PHP déployée.
  *
- * Source de vérité : `${APP_URL}/api/...` (l'API est déployée AVANT le
- * build du frontend — cf. docs/deployment-lws.md, ordre API → frontend).
- * Repli : les constantes `lib/data/*` si l'API est indisponible au build
- * (CI sans APP_URL, coupure réseau…) — le build ne doit jamais échouer
- * sur le contenu, il produit alors des pages vides mais valides.
+ * Source de vérité : `${APP_URL}/api/...` (l'API est déployée sur LWS).
+ * Repli : les constantes `lib/data/*` si l'API est indisponible — la page
+ * affiche alors des données vides mais valides.
  *
- * Mémoïsation par build (Map module) : generateMetadata + page + sidebar
- * d'une même route ne refont pas le même appel HTTP (utile contre une
- * base Aiven distante), et /api/blog/{slug} n'incrémente les vues qu'une
- * fois par build.
+ * Mémoïsation par requête (Map module) : plusieurs composants sur une même
+ * route ne refont pas le même appel HTTP.
  */
+"use server";
+
 import { SITE_CONFIG, SERVICES, DESTINATIONS } from "@/lib/constants";
 import { BLOG_POSTS } from "@/lib/data/blog";
 import { CIRCUITS } from "@/lib/data/circuits";
@@ -32,13 +30,14 @@ import type {
 import type { BlogPost as StaticBlogPost } from "@/lib/data/blog";
 import type { Circuit as StaticCircuit } from "@/lib/data/circuits";
 import type { Testimonial as StaticTestimonial } from "@/lib/data/testimonials";
+import { unstable_cache } from "next/cache";
 
 /**
  * Base de l'API : APP_URL (env de build/déployement). APP_URL="" désactive
- * explicitement le fetch (CI) → repli immédiat. Défaut : l'URL publique
+ * explicitement le fetch → repli immédiat. Défaut : l'URL publique
  * du site (l'API est same-origin en production).
  */
-export function apiBase(): string | null {
+function apiBase(): string | null {
   const url = process.env.APP_URL;
   if (url !== undefined) {
     return url.trim() === "" ? null : url.trim().replace(/\/+$/, "");
@@ -53,11 +52,12 @@ async function fetchApi<T>(path: string): Promise<T | null> {
     return null;
   }
   // Plusieurs tentatives : l'API LWS peut être lente au premier appel
-  // (cold start). Le build ne doit jamais échouer sur le contenu.
+  // (cold start). La page ne doit jamais échouer sur le contenu.
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await fetch(`${base}${path}`, {
-        cache: "force-cache",
+        // no-store = SSR dynamique (pas de cache)
+        cache: "no-store",
         signal: AbortSignal.timeout(30000),
       });
       if (response.ok) {
@@ -70,30 +70,19 @@ async function fetchApi<T>(path: string): Promise<T | null> {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
-  return null; // repli lib/data — le build continue
+  return null; // repli lib/data — la page continue
 }
 
-// ─────────────────────────────── Mémoïsation ───────────────────────────────
+// ─────────────────────────────── Mémoïsation par requête ───────────────────────────────
 
 const memo = new Map<string, Promise<unknown>>();
 
-/** Déduplique les appels identiques pendant le build (clé = chemin API). */
+/** Déduplique les appels identiques pendant la requête (clé = chemin API). */
 function memoized<T>(path: string): Promise<T | null> {
   if (!memo.has(path)) {
     memo.set(path, fetchApi<T>(path));
   }
   return memo.get(path) as Promise<T | null>;
-}
-
-// ─────────────────────────────── Lecteurs bruts ───────────────────────────────
-
-function listPath(path: string): string {
-  return `${path}${path.includes("?") ? "&" : "?"}pageSize=100`;
-}
-
-async function fetchPage<T>(path: string): Promise<T[]> {
-  const page = await memoized<ApiPage<T>>(listPath(path));
-  return page?.items ?? [];
 }
 
 // ─────────────────────────────── Circuits ───────────────────────────────
@@ -104,9 +93,10 @@ export async function getCircuits(): Promise<StaticCircuit[]> {
   return items.length > 0 ? items.map(toCircuitVM) : CIRCUITS;
 }
 
-/** Slugs des circuits actifs — generateStaticParams de /circuits/[slug]. */
+/** Slugs des circuits actifs — generateStaticParams pour /circuits/[slug]. */
 export async function getCircuitSlugs(): Promise<string[]> {
-  return (await getCircuits()).map((circuit) => circuit.slug);
+  const circuits = await getCircuits();
+  return circuits.map((circuit) => circuit.slug);
 }
 
 /** Circuit actif par slug (null → notFound / repli absent). */
@@ -125,7 +115,8 @@ export async function getBlogPosts(): Promise<StaticBlogPost[]> {
 
 /** Slugs des articles publiés — generateStaticParams de /blog/[slug]. */
 export async function getBlogSlugs(): Promise<string[]> {
-  return (await getBlogPosts()).map((post) => post.slug);
+  const posts = await getBlogPosts();
+  return posts.map((post) => post.slug);
 }
 
 /** Article publié par slug (null → notFound / repli absent). */
@@ -148,10 +139,19 @@ export async function getBlogCategories(): Promise<
 
 // ─────────────────────────────── Listes simples ───────────────────────────────
 
+function listPath(path: string): string {
+  return `${path}${path.includes("?") ? "&" : "?"}pageSize=100`;
+}
+
+async function fetchPage<T>(path: string): Promise<T[]> {
+  const page = await memoized<ApiPage<T>>(listPath(path));
+  return page?.items ?? [];
+}
+
 export async function getDestinations(): Promise<ApiDestination[]> {
   const items = await fetchPage<ApiDestination>("/api/destinations");
   if (items.length > 0) return items;
-  // Repli statique (constants) si l'API est indisponible au build.
+  // Repli statique (constants) si l'API est indisponible.
   return DESTINATIONS.map((name, i) => ({
     id: String(i),
     name,
@@ -193,16 +193,16 @@ export async function getServices(): Promise<ServiceVM[]> {
   const items = await fetchPage<ApiService>("/api/services");
   if (items.length > 0) {
     return items.map((service) => ({
-    id: service.id,
-    title: service.title,
-    titleEn: service.titleEn ?? undefined,
-    description: service.description ?? "",
-    descriptionEn: service.descriptionEn ?? undefined,
-    icon: service.icon ?? "Map",
-    href: service.href ?? "/contact",
-  }));
+      id: service.id,
+      title: service.title,
+      titleEn: service.titleEn ?? undefined,
+      description: service.description ?? "",
+      descriptionEn: service.descriptionEn ?? undefined,
+      icon: service.icon ?? "Map",
+      href: service.href ?? "/contact",
+    }));
   }
-  // Repli statique (constants) si l'API est indisponible au build.
+  // Repli statique (constants) si l'API est indisponible.
   return SERVICES.map((service) => ({
     id: String(service.id),
     title: service.title,
@@ -218,7 +218,7 @@ export async function getServices(): Promise<ServiceVM[]> {
 
 /**
  * Paramètres publics (liste blanche côté API : biographies du fondateur).
- * Retourne une map key → value, ou {} si indisponible au build.
+ * Retourne une map key → value, ou {} si indisponible.
  */
 export async function getPublicSettings(): Promise<Record<string, string>> {
   const page = await memoized<ApiPage<ApiSetting>>("/api/settings");
@@ -226,4 +226,44 @@ export async function getPublicSettings(): Promise<Record<string, string>> {
     .filter((setting) => setting.value !== null)
     .map((setting) => [setting.key, setting.value as string]);
   return Object.fromEntries(entries);
+}
+
+// ─────────────────────────────── Footer / Navigation ───────────────────────────────
+
+export interface FooterData {
+  siteName: string;
+  siteDescription: string;
+  contactEmail: string;
+  contactPhone: string;
+  contactAddress: string;
+  socialFacebook: string;
+  socialInstagram: string;
+  socialYoutube: string;
+  whatsappNumber: string;
+  founderBioFr: string;
+  founderBioEn: string;
+  founderName: string;
+  founderTitle: string;
+  mapEmbedUrl: string;
+}
+
+/** Données complètes pour le footer (dynamique). */
+export async function getFooterData(): Promise<FooterData> {
+  const settings = await getPublicSettings();
+  return {
+    siteName: settings.site_name ?? SITE_CONFIG.name,
+    siteDescription: settings.site_description ?? SITE_CONFIG.description,
+    contactEmail: settings.contact_email ?? SITE_CONFIG.contact.email,
+    contactPhone: settings.contact_phone ?? SITE_CONFIG.contact.phone,
+    contactAddress: settings.contact_address ?? SITE_CONFIG.contact.address,
+    socialFacebook: settings.social_facebook ?? SITE_CONFIG.links.facebook,
+    socialInstagram: settings.social_instagram ?? SITE_CONFIG.links.instagram,
+    socialYoutube: settings.social_youtube ?? SITE_CONFIG.links.youtube,
+    whatsappNumber: settings.whatsapp_number ?? SITE_CONFIG.links.whatsapp,
+    founderBioFr: settings.founder_bio_fr ?? "",
+    founderBioEn: settings.founder_bio_en ?? "",
+    founderName: SITE_CONFIG.founder.name,
+    founderTitle: SITE_CONFIG.founder.title,
+    mapEmbedUrl: SITE_CONFIG.map.embedUrl,
+  };
 }
