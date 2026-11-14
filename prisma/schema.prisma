@@ -62,6 +62,7 @@ model User {
   lastName     String    @map("last_name") @db.VarChar(100)
   role         UserRole  @default(editor)
   isActive     Boolean   @default(true) @map("is_active")
+  emailVerified DateTime? @map("email_verified")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
   lastLoginAt  DateTime? @map("last_login_at")

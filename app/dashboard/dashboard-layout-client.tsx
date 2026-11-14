@@ -5,6 +5,7 @@ import { Header } from "@/components/dashboard/header";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/api-client";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 // Pages d'authentification : sans chrome ET sans garde (la connexion
 // elle-même doit rester accessible sans session).
@@ -88,7 +89,7 @@ export function DashboardLayoutClient({
       <div className="flex-1 flex flex-col overflow-hidden w-full">
         <Header onMenuClick={() => setSidebarOpen(true)} user={session} />
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
-          {children}
+          <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>
     </div>

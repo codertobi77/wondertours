@@ -13,6 +13,8 @@ export interface Circuit {
   itinerary: { day: number; title: string; description: string }[];
   included: string[];
   excluded: string[];
+  /** Galerie d'images (optionnelle, pour la page de détail). */
+  gallery?: string[];
   // Traductions anglaises optionnelles (repli FR si absentes).
   titleEn?: string;
   destinationEn?: string;

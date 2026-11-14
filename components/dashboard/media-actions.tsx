@@ -19,12 +19,68 @@ export function MediaUploader({ onChanged }: { onChanged?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Validation côté client
+  const ALLOWED_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/svg+xml",
+  ];
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 Mo
+  const MAX_DIMENSION = 4000; // 4000px max pour éviter les images trop grandes
+
+  function validateFile(file: File): string | null {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return "Format non supporté. Utilisez JPEG, PNG, WebP, GIF ou SVG.";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return `Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} Mo). Maximum 5 Mo.`;
+    }
+    return null;
+  }
+
+  async function checkDimensions(file: File): Promise<string | null> {
+    if (file.type === "image/svg+xml" || file.type === "image/gif") {
+      return null; // SVG et GIF : pas de vérification de dimensions
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        if (img.width > MAX_DIMENSION || img.height > MAX_DIMENSION) {
+          resolve(
+            `Image trop grande (${img.width}x${img.height}px). Maximum ${MAX_DIMENSION}px.`
+          );
+        } else {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve("Impossible de lire l'image.");
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   async function handleUpload() {
     const file = fileRef.current?.files?.[0];
     if (!file) {
       setError("Sélectionnez d'abord une image.");
       return;
     }
+
+    // Validation fichier
+    const fileError = validateFile(file);
+    if (fileError) {
+      setError(fileError);
+      return;
+    }
+
+    // Vérification dimensions
+    const dimError = await checkDimensions(file);
+    if (dimError) {
+      setError(dimError);
+      return;
+    }
+
     setBusy(true);
     setError(null);
     setSuccess(false);

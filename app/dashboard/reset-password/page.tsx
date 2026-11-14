@@ -68,11 +68,18 @@ function ResetPasswordForm() {
         <CardContent>
           {!token ? (
             <div className="text-center space-y-4">
-              <p className="text-sm text-red-600">
-                Lien de réinitialisation incomplet.
-              </p>
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  <strong>Lien de réinitialisation invalide ou expiré.</strong> Ce lien doit
+                  contenir un jeton de sécurité (paramètre <code>?token=...</code> dans
+                  l'URL).
+                </p>
+                <p className="text-xs text-amber-700 mt-2">
+                  Vérifiez que vous avez copié l'URL complète depuis l'email reçu.
+                </p>
+              </div>
               <Button href="/dashboard/forgot-password" className="w-full">
-                Demander un nouveau lien
+                Demander un nouveau lien de réinitialisation
               </Button>
             </div>
           ) : success ? (

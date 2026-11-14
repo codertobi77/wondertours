@@ -5,6 +5,7 @@ import { SITE_CONFIG } from "@/lib/constants";
 import { generateMetadata } from "@/lib/seo";
 import { LanguageProvider } from "@/contexts/language-context";
 import { ReservationsProvider } from "@/contexts/reservations-context";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 const playfairDisplay = Playfair_Display({
   variable: "--font-playfair-display",
@@ -63,7 +64,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <ReservationsProvider>
-          <LanguageProvider>{children}</LanguageProvider>
+          <LanguageProvider>
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </LanguageProvider>
         </ReservationsProvider>
       </body>
     </html>

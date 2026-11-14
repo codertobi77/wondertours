@@ -9,6 +9,8 @@ import { getBlogCategories, getBlogPost, getBlogPosts, getBlogSlugs } from "@/li
 import { Calendar, Clock, Share2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { generateMetadata as generateSeoMetadata } from "@/lib/seo";
+import Image from "next/image";
 import type { Metadata } from "next";
 
 interface BlogPostPageProps {
@@ -17,17 +19,8 @@ interface BlogPostPageProps {
   }>;
 }
 
-// Export statique : une page HTML par article publié au build.
-export const dynamicParams = false;
-
-export async function generateStaticParams() {
-  const slugs = await getBlogSlugs();
-  // Export statique : Next refuse un tableau vide (au moins une route
-  // générée). Sentinelle "_" si le contenu est indisponible au build
-  // (CI sans APP_URL, API coupée) : la page rend alors not-found, aucun
-  // contenu fictif n'est pas publié.
-  return slugs.length > 0 ? slugs.map((slug) => ({ slug })) : [{ slug: "_" }];
-}
+// Pour SSR/ISR : dynamicParams=true par défaut, pas de generateStaticParams
+// Les pages sont rendues à la demande avec revalidation
 
 export async function generateMetadata({
   params,
@@ -35,10 +28,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getBlogPost(slug);
   if (!post) return {};
-  return {
-    title: `${post.title} - Wonder Tours and Services`,
+  return generateSeoMetadata({
+    title: post.title,
     description: post.excerpt || undefined,
-  };
+    path: `/blog/${slug}`,
+    image: post.featuredImage,
+  });
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
@@ -93,10 +88,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative h-[50vh] min-h-[400px]">
-          <img
+          <Image
             src={post.image}
             alt={post.title}
-            className="h-full w-full object-cover"
+            fill
+            className="object-cover"
+            priority
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 container mx-auto px-4 lg:px-8 pb-12">
@@ -144,29 +142,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     Copier le lien
                   </button>
                 </div>
-
-                {/* Comments Section */}
-                <div className="mt-12 pt-8 border-t">
-                  <h3 className="font-heading text-2xl font-bold text-text mb-6">
-                    Laisser un commentaire
-                  </h3>
-                  <form className="space-y-4">
-                    <div>
-                      <label htmlFor="comment" className="block text-sm font-medium text-text mb-2">
-                        Commentaire
-                      </label>
-                      <textarea
-                        id="comment"
-                        rows={5}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none resize-none"
-                        placeholder="Votre commentaire..."
-                      />
-                    </div>
-                    <Button variant="primary" type="submit">
-                      Envoyer le commentaire
-                    </Button>
-                  </form>
-                </div>
               </div>
 
               {/* Sidebar */}
@@ -184,11 +159,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                         className="block group"
                       >
                         <div className="flex gap-3">
-                          <img
-                            src={recentPost.image}
-                            alt={recentPost.title}
-                            className="w-16 h-16 object-cover rounded-lg"
-                          />
+                          <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
+                            <Image
+                              src={recentPost.image}
+                              alt={recentPost.title}
+                              fill
+                              className="object-cover"
+                              sizes="64px"
+                            />
+                          </div>
                           <div>
                             <h4 className="font-medium text-text text-sm group-hover:text-primary transition-colors line-clamp-2">
                               {recentPost.title}
@@ -243,11 +222,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               <div className="grid md:grid-cols-3 gap-8">
                 {related.map((relatedPost) => (
                   <div key={relatedPost.id} className="bg-white rounded-xl overflow-hidden shadow-md">
-                    <img
-                      src={relatedPost.image}
-                      alt={relatedPost.title}
-                      className="w-full h-48 object-cover"
-                    />
+                    <div className="relative w-full h-48">
+                      <Image
+                        src={relatedPost.image}
+                        alt={relatedPost.title}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      />
+                    </div>
                     <div className="p-6">
                       <Badge variant="secondary" className="mb-3">{relatedPost.category}</Badge>
                       <h3 className="font-heading text-lg font-bold text-text mb-2">

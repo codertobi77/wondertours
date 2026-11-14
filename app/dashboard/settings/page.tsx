@@ -27,7 +27,7 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold text-gray-900">Paramètres</h1>
         <p className="text-gray-600 mt-1">Configurez les paramètres du site</p>
       </div>
-      {loading && <LoadingBlock />}
+      {loading && <LoadingBlock variant="card" />}
       {error && <ErrorBlock message={error} />}
       {/* Le formulaire n'est monté qu'une fois les valeurs chargées :
           son useState(initial) capture l'état initial au premier rendu. */}

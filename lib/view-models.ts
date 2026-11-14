@@ -32,6 +32,11 @@ export function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
+/** Json → tableau de chaînes pour galerie d'images. */
+export function toGalleryArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+}
+
 /** Json → itinéraire typé (programme jour par jour). */
 export function toItinerary(
   value: unknown
@@ -100,6 +105,7 @@ export function toCircuitVM(
     includedEn: toStringArray(circuit.includedEn),
     excluded: toStringArray(circuit.excluded),
     excludedEn: toStringArray(circuit.excludedEn),
+    gallery: toGalleryArray(circuit.gallery),
   };
 }
 
@@ -123,6 +129,7 @@ export function toBlogPostVM(
     // readTime "N min" est identique en EN : pas de readTimeEn, le
     // repli du composant l'affiche tel quel.
     image: post.imageUrl ?? FALLBACK_IMAGE,
+    featuredImage: post.imageUrl ?? FALLBACK_IMAGE,
     date: toDateString(post.publishedAt ?? post.createdAt),
     author: post.author
       ? `${post.author.firstName} ${post.author.lastName}`.trim()

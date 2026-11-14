@@ -8,6 +8,7 @@ import {
 } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
+import { sanitizeHtmlBrOnly } from "@/lib/sanitize";
 
 interface HeroProps {
   title: string;
@@ -128,7 +129,7 @@ export function Hero({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-4 md:mb-6 leading-tight"
-            dangerouslySetInnerHTML={{ __html: title }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtmlBrOnly(title) }}
           />
 
           <motion.p

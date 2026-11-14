@@ -130,3 +130,28 @@ export function getSessionTokenFromRequest(request: Request): string | null {
   );
   return cookies[SESSION_COOKIE_NAME] ?? null;
 }
+
+/**
+ * Verify an email verification token (different from session token)
+ */
+export async function verifyEmailToken(token: string): Promise<{ userId: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, getKey());
+    if (payload.type !== "email_verification" || !payload.userId) {
+      return null;
+    }
+    return { userId: payload.userId as string };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create an email verification token
+ */
+export async function createEmailVerificationToken(userId: string): Promise<string> {
+  return await new SignJWT({ userId, type: "email_verification" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("24h")
+    .sign(getKey());
+}

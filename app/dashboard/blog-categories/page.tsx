@@ -31,7 +31,7 @@ export default function BlogCategoriesPage() {
         </Button>
       </div>
 
-      {loading && <LoadingBlock />}
+      {loading && <LoadingBlock variant="table" />}
       {error && <ErrorBlock message={error} />}
 
       {!loading && !error && (

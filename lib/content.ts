@@ -8,6 +8,8 @@
  *
  * Mémoïsation par requête (Map module) : plusieurs composants sur une même
  * route ne refont pas le même appel HTTP.
+ * Cache serveur (unstable_cache) : réponses mises en cache 60s pour réduire
+ * la charge sur l'API PHP.
  */
 "use server";
 
@@ -85,11 +87,50 @@ function memoized<T>(path: string): Promise<T | null> {
   return memo.get(path) as Promise<T | null>;
 }
 
+// ─────────────────────────────── Cache serveur (unstable_cache) ───────────────────────────────
+
+/** Cache pour les listes : 60 secondes, revalidation sur demande. */
+const CACHE_TAGS = {
+  circuits: "circuits",
+  circuitsDetail: "circuits-detail",
+  blog: "blog",
+  blogDetail: "blog-detail",
+  categories: "categories",
+  destinations: "destinations",
+  testimonials: "testimonials",
+  settings: "settings",
+  services: "services",
+} as const;
+
+/** Wrapper unstable_cache pour les fetches de liste. */
+function cachedFetchPage<T>(path: string, tag: string): Promise<T[]> {
+  return unstable_cache(
+    async () => {
+      const page = await memoized<ApiPage<T>>(path);
+      return page?.items ?? [];
+    },
+    [path],
+    { tags: [tag], revalidate: 60 }
+  )();
+}
+
+/** Wrapper unstable_cache pour les fetches de détail. */
+function cachedFetchDetail<T>(path: string, tag: string): Promise<T | null> {
+  return unstable_cache(
+    async () => memoized<T>(path),
+    [path],
+    { tags: [tag], revalidate: 60 }
+  )();
+}
+
 // ─────────────────────────────── Circuits ───────────────────────────────
 
 /** Tous les circuits actifs (ordre : isFeatured desc, createdAt desc). */
 export async function getCircuits(): Promise<StaticCircuit[]> {
-  const items = await fetchPage<ApiCircuit>("/api/circuits");
+  const items = await cachedFetchPage<ApiCircuit>(
+    "/api/circuits",
+    CACHE_TAGS.circuits
+  );
   return items.length > 0 ? items.map(toCircuitVM) : CIRCUITS;
 }
 
@@ -101,7 +142,10 @@ export async function getCircuitSlugs(): Promise<string[]> {
 
 /** Circuit actif par slug (null → notFound / repli absent). */
 export async function getCircuit(slug: string): Promise<StaticCircuit | null> {
-  const circuit = await memoized<ApiCircuit>(`/api/circuits/${slug}`);
+  const circuit = await cachedFetchDetail<ApiCircuit>(
+    `/api/circuits/${slug}`,
+    CACHE_TAGS.circuitsDetail
+  );
   return circuit ? toCircuitVM(circuit) : null;
 }
 
@@ -109,7 +153,10 @@ export async function getCircuit(slug: string): Promise<StaticCircuit | null> {
 
 /** Tous les articles publiés (ordre : isFeatured desc, publishedAt desc). */
 export async function getBlogPosts(): Promise<StaticBlogPost[]> {
-  const items = await fetchPage<ApiBlogPost>("/api/blog");
+  const items = await cachedFetchPage<ApiBlogPost>(
+    "/api/blog",
+    CACHE_TAGS.blog
+  );
   return items.length > 0 ? items.map(toBlogPostVM) : BLOG_POSTS;
 }
 
@@ -121,7 +168,10 @@ export async function getBlogSlugs(): Promise<string[]> {
 
 /** Article publié par slug (null → notFound / repli absent). */
 export async function getBlogPost(slug: string): Promise<StaticBlogPost | null> {
-  const post = await memoized<ApiBlogPost>(`/api/blog/${slug}`);
+  const post = await cachedFetchDetail<ApiBlogPost>(
+    `/api/blog/${slug}`,
+    CACHE_TAGS.blogDetail
+  );
   return post ? toBlogPostVM(post) : null;
 }
 
@@ -129,7 +179,10 @@ export async function getBlogPost(slug: string): Promise<StaticBlogPost | null> 
 export async function getBlogCategories(): Promise<
   { id: string; name: string; slug: string }[]
 > {
-  const items = await fetchPage<ApiBlogCategory>("/api/blog-categories");
+  const items = await cachedFetchPage<ApiBlogCategory>(
+    "/api/blog-categories",
+    CACHE_TAGS.categories
+  );
   return items.map((category) => ({
     id: category.id,
     name: category.name,
@@ -149,7 +202,10 @@ async function fetchPage<T>(path: string): Promise<T[]> {
 }
 
 export async function getDestinations(): Promise<ApiDestination[]> {
-  const items = await fetchPage<ApiDestination>("/api/destinations");
+  const items = await cachedFetchPage<ApiDestination>(
+    "/api/destinations",
+    CACHE_TAGS.destinations
+  );
   if (items.length > 0) return items;
   // Repli statique (constants) si l'API est indisponible.
   return DESTINATIONS.map((name, i) => ({
@@ -171,11 +227,17 @@ export async function getDestinations(): Promise<ApiDestination[]> {
 }
 
 export async function getCategories(): Promise<ApiCategory[]> {
-  return fetchPage<ApiCategory>("/api/categories");
+  return cachedFetchPage<ApiCategory>(
+    "/api/categories",
+    CACHE_TAGS.categories
+  );
 }
 
 export async function getTestimonials(): Promise<StaticTestimonial[]> {
-  const items = await fetchPage<ApiTestimonial>("/api/testimonials");
+  const items = await cachedFetchPage<ApiTestimonial>(
+    "/api/testimonials",
+    CACHE_TAGS.testimonials
+  );
   return items.length > 0 ? items.map(toTestimonialVM) : TESTIMONIALS;
 }
 
@@ -190,7 +252,10 @@ export interface ServiceVM {
 }
 
 export async function getServices(): Promise<ServiceVM[]> {
-  const items = await fetchPage<ApiService>("/api/services");
+  const items = await cachedFetchPage<ApiService>(
+    "/api/services",
+    CACHE_TAGS.services
+  );
   if (items.length > 0) {
     return items.map((service) => ({
       id: service.id,
@@ -221,8 +286,11 @@ export async function getServices(): Promise<ServiceVM[]> {
  * Retourne une map key → value, ou {} si indisponible.
  */
 export async function getPublicSettings(): Promise<Record<string, string>> {
-  const page = await memoized<ApiPage<ApiSetting>>("/api/settings");
-  const entries = (page?.items ?? [])
+  const page = await cachedFetchPage<ApiSetting>(
+    "/api/settings",
+    CACHE_TAGS.settings
+  );
+  const entries = page
     .filter((setting) => setting.value !== null)
     .map((setting) => [setting.key, setting.value as string]);
   return Object.fromEntries(entries);

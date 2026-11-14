@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppButton } from "@/components/common/whatsapp-button";
@@ -30,16 +30,55 @@ export default function HotelsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [csrfToken, setCsrfToken] = useState<string>("");
+
+  // Rate limiting : max 3 soumissions par session (sessionStorage)
+  const RATE_LIMIT_KEY = "hotel_form_submissions";
+  const RATE_LIMIT_MAX = 3;
+
+  function checkRateLimit(): boolean {
+    if (typeof window === "undefined") return true;
+    const count = parseInt(sessionStorage.getItem(RATE_LIMIT_KEY) ?? "0", 10);
+    return count < RATE_LIMIT_MAX;
+  }
+
+  function incrementRateLimit(): void {
+    if (typeof window === "undefined") return;
+    const count = parseInt(sessionStorage.getItem(RATE_LIMIT_KEY) ?? "0", 10);
+    sessionStorage.setItem(RATE_LIMIT_KEY, String(count + 1));
+  }
+
+  // Récupérer le token CSRF au montage
+  useEffect(() => {
+    fetch("/api/csrf-token")
+      .then((res) => res.json())
+      .then((data) => data.token && setCsrfToken(data.token))
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Vérification rate limiting côté client
+    if (!checkRateLimit()) {
+      setErrorMessage(
+        isFr
+          ? "Trop de tentatives. Veuillez attendre avant de renvoyer le formulaire."
+          : "Too many attempts. Please wait before resubmitting."
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage(null);
 
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
@@ -85,6 +124,7 @@ export default function HotelsPage() {
       }
 
       setIsSubmitted(true);
+      incrementRateLimit();
     } catch {
       setErrorMessage(
         isFr

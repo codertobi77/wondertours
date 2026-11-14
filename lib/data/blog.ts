@@ -8,6 +8,8 @@ export interface BlogPost {
   excerpt: string;
   content: string;
   image: string;
+  /** Image en vedette pour la page de détail (optionnelle, fallback sur image). */
+  featuredImage?: string;
   date: string;
   author: string;
   readTime: string;

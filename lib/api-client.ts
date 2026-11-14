@@ -146,6 +146,144 @@ export function useSession(): { session: Session | null; loading: boolean } {
 }
 
 /**
+ * Hook pour les données paginées.
+ * Gère le chargement, la pagination, le tri et les filtres.
+ */
+export interface PaginatedApiData<T> {
+  data: T[] | null;
+  error: string | null;
+  loading: boolean;
+  status: number | null;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  reload: () => void;
+  setPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
+  setFilters: (filters: Record<string, unknown>) => void;
+}
+
+export function usePaginatedApiData<T>(
+  basePath: string,
+  initialPageSize = 20
+): PaginatedApiData<T> {
+  const router = useRouter();
+  const [state, setState] = useState<{
+    items: T[] | null;
+    total: number;
+    page: number;
+    pageSize: number;
+    error: string | null;
+    loading: boolean;
+    status: number | null;
+    filters: Record<string, unknown>;
+  }>({
+    items: null,
+    total: 0,
+    page: 1,
+    pageSize: initialPageSize,
+    error: null,
+    loading: true,
+    status: null,
+    filters: {},
+  });
+  const [nonce, setNonce] = useState(0);
+
+  const buildPath = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set("page", String(state.page));
+    params.set("pageSize", String(state.pageSize));
+    Object.entries(state.filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        params.set(key, String(value));
+      }
+    });
+    return `${basePath}?${params.toString()}`;
+  }, [basePath, state.page, state.pageSize, state.filters]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const path = buildPath();
+    apiFetch<{ items: T[]; total: number }>(path)
+      .then((data) => {
+        if (!cancelled) {
+          setState((prev) => ({
+            ...prev,
+            items: data.items,
+            total: data.total,
+            loading: false,
+            status: 200,
+            error: null,
+          }));
+        }
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        if (error instanceof ApiError && error.status === 401) {
+          router.replace("/dashboard/login");
+          return;
+        }
+        setState((prev) => ({
+          ...prev,
+          items: null,
+          total: 0,
+          error: error instanceof ApiError ? error.message : "Erreur réseau",
+          loading: false,
+          status: error instanceof ApiError ? error.status : null,
+        }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [buildPath, nonce, router]);
+
+  const reload = useCallback(() => {
+    setState((previous) => ({ ...previous, loading: true, error: null }));
+    setNonce((n) => n + 1);
+  }, []);
+
+  const setPage = useCallback((page: number) => {
+    setState((prev) => ({ ...prev, page: Math.max(1, page), loading: true, error: null }));
+  }, []);
+
+  const setPageSize = useCallback((pageSize: number) => {
+    setState((prev) => ({
+      ...prev,
+      pageSize: Math.max(1, Math.min(100, pageSize)),
+      page: 1,
+      loading: true,
+      error: null,
+    }));
+  }, []);
+
+  const setFilters = useCallback((filters: Record<string, unknown>) => {
+    setState((prev) => ({
+      ...prev,
+      filters,
+      page: 1,
+      loading: true,
+      error: null,
+    }));
+  }, []);
+
+  return {
+    data: state.items,
+    error: state.error,
+    loading: state.loading,
+    status: state.status,
+    total: state.total,
+    page: state.page,
+    pageSize: state.pageSize,
+    totalPages: Math.ceil(state.total / state.pageSize),
+    reload,
+    setPage,
+    setPageSize,
+    setFilters,
+  };
+}
+
+/**
  * Filtre local des listes dashboard (fetch unique pageSize=100, comme
  * l'ancien refilter serveur via ?q=) : vrai si un champ contient la
  * recherche (insensible à la casse), vide = tout afficher.

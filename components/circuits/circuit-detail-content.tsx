@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, MapPin, Check, X } from "lucide-react";
 import { Circuit } from "@/lib/data/circuits";
 import { useLanguage } from "@/contexts/language-context";
+import { FALLBACK_IMAGE } from "@/lib/view-models";
 
 interface CircuitDetailContentProps {
   circuit: Circuit;
@@ -207,11 +208,11 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
             title={isFr ? "Galerie photos" : "Photo gallery"}
           />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
+            {circuit.gallery?.map((image, index) => (
+              <div key={index} className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
                 <img
-                  src="[PHOTO GALERIE À REMPLACER]"
-                  alt={`${circuit.title} gallery photo ${i}`}
+                  src={image}
+                  alt={`${circuit.title} gallery photo ${index + 1}`}
                   className="h-full w-full object-cover hover:scale-105 transition-transform duration-300"
                 />
               </div>
@@ -243,7 +244,7 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
       <section className="py-20 bg-primary relative">
         <div className="absolute inset-0">
           <img
-            src="[PHOTO CTA CIRCUIT À REMPLACER]"
+            src={circuit.image}
             alt={isFr ? "Réserver" : "Book"}
             className="h-full w-full object-cover"
           />
