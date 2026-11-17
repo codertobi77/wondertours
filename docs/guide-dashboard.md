@@ -210,9 +210,11 @@ Les services (transport, hébergement, guide…) sont présentés sur la page d'
 
 ## 7. Gérer les témoignages
 
-Les témoignages sont les avis des voyageurs, affichés sur le site public.
+Les témoignages sont les avis des voyageurs, affichés sur le site public. **Les visiteurs peuvent en laisser eux-mêmes** depuis la page Témoignages du site (« Laissez-nous votre avis ») : l'avis est **publié immédiatement** et l'équipe reçoit un email de notification. Dans le dashboard, chaque avis reçu peut être **masqué** (décocher « Actif ») ou **supprimé** s'il est inapproprié ; la case « Vérifié » sert à confirmer qu'un avis a été relu par l'équipe.
 
-### Le formulaire
+> 💡 Un avis publié par un visiteur porte le badge « masqué / visible » mais pas « vérifié » : relisez-le dans le dashboard et cochez « Vérifié » s'il est authentique. En cas de contenu illégal ou offensant, supprimez-le ou décochez « Actif » pour le retirer du site.
+
+### Le formulaire (dashboard)
 
 - **Informations client** : **Nom complet \*** (obligatoire), **Pays**, et **« Circuit / Service concerné »** (liste déroulante des circuits).
 - **Contenu** : **Note \*** — cliquez sur les étoiles (de 1 à 5) ; **Témoignage (FR) \*** — 10 caractères minimum ; Témoignage (EN) + bouton Traduire ; **Date du voyage**.
@@ -405,6 +407,7 @@ Le site envoie automatiquement les emails suivants :
 | Demande de contact (site public) | L'équipe | Notification interne avec le détail de la demande |
 | Réservation (site public) | Client | Confirmation avec la référence `WT-XXXXXX` |
 | Réservation (site public) | L'équipe | Notification interne |
+| Témoignage laissé par un visiteur (site public) | L'équipe | « [Témoignage] {nom} — {note}/5 » (avis publié immédiatement sur le site) |
 | **Changement de statut d'une réservation (dashboard)** | Client | « Votre réservation WT-XXXXXX est confirmée / annulée / terminée / en attente » |
 | Changement de statut d'une demande de contact | — | Aucun email |
 | Création d'un compte (dashboard) | Nouvel utilisateur | « Votre compte Wonder Tours est prêt » |
