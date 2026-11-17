@@ -210,7 +210,11 @@ Les services (transport, hébergement, guide…) sont présentés sur la page d'
 
 ## 7. Gérer les témoignages
 
-Les témoignages sont les avis des voyageurs, affichés sur le site public. **Les visiteurs peuvent en laisser eux-mêmes** depuis la page Témoignages du site (« Laissez-nous votre avis ») : l'avis est **publié immédiatement** et l'équipe reçoit un email de notification. Dans le dashboard, chaque avis reçu peut être **masqué** (décocher « Actif ») ou **supprimé** s'il est inapproprié ; la case « Vérifié » sert à confirmer qu'un avis a été relu par l'équipe.
+Les témoignages sont les avis des voyageurs, affichés sur le site public. **Les visiteurs peuvent en laisser eux-mêmes** depuis la page Témoignages du site (« Partager mon témoignage ») : l'avis est **publié immédiatement** et l'équipe reçoit un email de notification. Dans le dashboard, chaque avis reçu peut être **modifié**, **masqué** (décocher « Actif ») ou **supprimé** s'il est inapproprié ; la case « Vérifié » sert à confirmer qu'un avis a été relu par l'équipe.
+
+> ⚠️ **Aucun bouton « Nouveau témoignage »** dans le dashboard : les avis ne se créent pas à la main, ils arrivent uniquement via le formulaire public. Le dashboard sert à la **modération** (vérifier, mettre à la une, masquer, supprimer).
+
+> 💡 **Traduction automatique** : à la publication, le texte de l'avis est traduit automatiquement (DeepL) dans l'autre langue (FR ↔ EN). Le visiteur voit l'avis dans sa langue ; l'admin peut corriger la traduction dans le champ « Témoignage (EN) » si besoin. Un échec de traduction n'empêche jamais la publication.
 
 > 💡 Un avis publié par un visiteur porte le badge « masqué / visible » mais pas « vérifié » : relisez-le dans le dashboard et cochez « Vérifié » s'il est authentique. En cas de contenu illégal ou offensant, supprimez-le ou décochez « Actif » pour le retirer du site.
 
@@ -382,18 +386,19 @@ Le menu **Paramètres** regroupe les informations générales affichées sur le 
 Modifiez les champs, puis cliquez sur **« Enregistrer les modifications »**. La confirmation « Paramètres enregistrés. » s'affiche.
 
 > 💡 Renseignez de vrais comptes de réseaux sociaux (URL complètes, ex. `https://www.facebook.com/wondertours`) : ils apparaissent dans le pied de page du site.
+> 💡 La **biographie du fondateur** se met à jour **immédiatement** sur la page « À propos » après enregistrement (pas besoin de publier le site).
 
 ---
 
 ## 14. Publier les modifications sur le site
 
-En haut de l'écran, le bouton **« Publier le site »** (visible pour les administrateurs et éditeurs) **régénère la partie publique du site** pour refléter vos derniers changements.
+La plupart des contenus (circuits, destinations, catégories, services, blog, témoignages modérés) sont figés au moment du build : après les avoir modifiés, cliquez sur **« Publier le site »** pour les rendre visibles.
 
 - Cliquez dessus après une série de modifications importantes.
 - Un message confirme : « Rebuild déclenché — le site sera mis à jour dans ~3 min. »
 - Patientez environ **3 minutes**, puis vérifiez le résultat sur le site public (actualisez la page avec `Ctrl + F5` si nécessaire).
 
-> 💡 À retenir : **enregistrer ≠ publier**. L'enregistrement sauvegarde en base ; le bouton « Publier le site » rend les changements visibles sur le site public.
+> 💡 À retenir : **enregistrer ≠ publier** pour les contenus figés au build. En revanche, la **biographie du fondateur** et les **nouveaux témoignages publics** apparaissent sans publication manuelle.
 
 ---
 
