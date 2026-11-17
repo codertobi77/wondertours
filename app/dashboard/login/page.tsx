@@ -23,12 +23,11 @@ export default function LoginPage() {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
       if (response.ok) {
-        // Cookie posé par l'API : la garde client du layout relit la
-        // session via GET /api/auth/me au montage de /dashboard.
         router.replace("/dashboard");
         return;
       }

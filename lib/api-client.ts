@@ -32,7 +32,7 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(path, init);
+  const response = await fetch(path, { credentials: "include", ...init });
   if (!response.ok) {
     let message = `Erreur ${response.status}`;
     try {

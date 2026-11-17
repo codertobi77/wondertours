@@ -20,9 +20,9 @@ final class Auth
     private static function cookieAttributes(): string
     {
         $secure = Env::bool('secure_cookies', str_starts_with((string) Env::get('app_url'), 'https://'));
-        return 'httpOnly=true'
-            . '; secure=' . ($secure ? 'true' : 'false')
-            . '; sameSite=lax; path=/; maxAge=' . self::TTL_SECONDS;
+        return 'HttpOnly'
+            . ($secure ? '; Secure' : '')
+            . '; SameSite=Lax; Path=/; Max-Age=' . self::TTL_SECONDS;
     }
 
     /** Émet le cookie de session (login). */
@@ -36,9 +36,9 @@ final class Auth
     {
         $secure = Env::bool('secure_cookies', str_starts_with((string) Env::get('app_url'), 'https://'));
         header(
-            'Set-Cookie: ' . self::COOKIE_NAME . '=deleted; httpOnly=true'
-            . '; secure=' . ($secure ? 'true' : 'false')
-            . '; sameSite=lax; path=/; maxAge=0; Max-Age=0'
+            'Set-Cookie: ' . self::COOKIE_NAME . '=deleted; HttpOnly'
+            . ($secure ? '; Secure' : '')
+            . '; SameSite=Lax; Path=/; Max-Age=0'
         );
     }
 
