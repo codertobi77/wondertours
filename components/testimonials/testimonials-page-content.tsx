@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { Star, ChevronLeft, ChevronRight } from "lucide-react";
-import { SectionHeading } from "@/components/ui/section-heading";
+import { useEffect, useState } from "react";
+import { Star, ChevronLeft, ChevronRight } from "lucide-react";import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
 import { TestimonialsContent } from "@/components/testimonials/testimonials-content";
+import {
+  TestimonialFormPublic,
+  TESTIMONIAL_CREATED_EVENT,
+} from "@/components/testimonials/testimonial-form-public";
+import { toTestimonialVM } from "@/lib/view-models";
 import { useLanguage } from "@/contexts/language-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Testimonial } from "@/lib/data/testimonials";
+import type { ApiTestimonial } from "@/lib/api-types";
 
 interface TestimonialsPageContentProps {
   /** Tous les témoignages actifs, embarqués dans la page statique. */
   testimonials: Testimonial[];
-  averageRating: number;
-  totalTestimonials?: number;
   /** Témoignages par page (6, comme l'ancien rendu serveur). */
   pageSize?: number;
 }
@@ -26,8 +29,6 @@ interface TestimonialsPageContentProps {
  */
 export function TestimonialsPageContent({
   testimonials,
-  averageRating,
-  totalTestimonials = testimonials.length,
   pageSize = 6,
 }: TestimonialsPageContentProps) {
   const { locale } = useLanguage();
@@ -38,12 +39,99 @@ export function TestimonialsPageContent({
   const initialPage =
     Number.parseInt(searchParams.get("page") ?? "1", 10) || 1;
 
-  const totalPages = Math.max(1, Math.ceil(testimonials.length / pageSize));
+  // Liste « vivante » : les témoignages sont embarqués au build (page
+  // statique), mais un visiteur peut publier un témoignage à chaud —
+  // on refetch donc /api/testimonials au montage et à chaque nouvelle
+  // publication (événement wt:testimonial-created). En cas d'échec
+  // (API indisponible), on garde les données du build.
+  const [liveTestimonials, setLiveTestimonials] = useState<
+    Testimonial[] | null
+  >(null);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetch("/api/testimonials?pageSize=100")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((page) => {
+          if (
+            cancelled ||
+            !page ||
+            !Array.isArray(page.items) ||
+            page.items.length === 0
+          ) {
+            return;
+          }
+          setLiveTestimonials(
+            (page.items as ApiTestimonial[]).map(toTestimonialVM)
+          );
+        })
+        .catch(() => null);
+    };
+    load();
+    window.addEventListener(TESTIMONIAL_CREATED_EVENT, load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(TESTIMONIAL_CREATED_EVENT, load);
+    };
+  }, []);
+
+  // Section formulaire masquée par défaut : elle apparaît au clic sur
+  // « Partager mon témoignage » (CTA final) ou quand l'URL contient
+  // #partager (CTA du hero, lien direct). À l'ouverture, défilement
+  // doux vers la section.
+  const [formOpen, setFormOpen] = useState(false);
+  useEffect(() => {
+    const reveal = () => {
+      if (window.location.hash === "#partager") {
+        setFormOpen(true);
+      }
+    };
+    reveal();
+    window.addEventListener("hashchange", reveal);
+    return () => window.removeEventListener("hashchange", reveal);
+  }, []);
+  useEffect(() => {
+    if (!formOpen) return;
+    requestAnimationFrame(() => {
+      document
+        .getElementById("partager")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [formOpen]);
+
+  // Après une publication réussie : on laisse le temps de lire la
+  // confirmation, puis la section se referme et la page remonte à la
+  // liste des témoignages où le nouvel avis vient d'apparaître.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onCreated = () => {
+      timer = setTimeout(() => {
+        setFormOpen(false);
+        document
+          .getElementById("liste-temoignages")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 2000);
+    };
+    window.addEventListener(TESTIMONIAL_CREATED_EVENT, onCreated);
+    return () => {
+      window.removeEventListener(TESTIMONIAL_CREATED_EVENT, onCreated);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, []);
+
+  const list = liveTestimonials ?? testimonials;
+  const effectiveTotal = list.length;
+  const effectiveAverage =
+    list.length > 0
+      ? list.reduce((acc, t) => acc + t.rating, 0) / list.length
+      : 0;
+
+  const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
   const [page, setPage] = useState<number>(
     Math.min(Math.max(initialPage, 1), totalPages)
   );
   const currentPage = Math.min(page, totalPages);
-  const paged = testimonials.slice(
+  const paged = list.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
@@ -95,7 +183,7 @@ export function TestimonialsPageContent({
           <div className="grid md:grid-cols-3 gap-8 text-center">
             <div>
               <div className="text-5xl font-heading font-bold text-primary mb-2">
-                {totalTestimonials}
+                {effectiveTotal}
               </div>
               <p className="text-text-secondary">
                 {isFr ? "Témoignages" : "Testimonials"}
@@ -104,7 +192,7 @@ export function TestimonialsPageContent({
             <div>
               <div className="flex items-center justify-center gap-1 mb-2">
                 <span className="text-5xl font-heading font-bold text-primary">
-                  {averageRating.toFixed(1)}
+                  {effectiveAverage.toFixed(1)}
                 </span>
                 <Star className="w-8 h-8 fill-secondary text-secondary" />
               </div>
@@ -125,7 +213,7 @@ export function TestimonialsPageContent({
       </section>
 
       {/* Testimonials Grid */}
-      <section className="py-20 bg-background">
+      <section id="liste-temoignages" className="py-20 bg-background scroll-mt-24">
         <div className="container mx-auto px-4 lg:px-8">
           <SectionHeading
             title={
@@ -135,7 +223,7 @@ export function TestimonialsPageContent({
             }
           />
           <TestimonialsContent testimonials={paged} />
-          {testimonials.length === 0 && (
+          {list.length === 0 && (
             <p className="text-center text-text-secondary py-12">
               {isFr
                 ? "Aucun témoignage pour le moment."
@@ -199,11 +287,39 @@ export function TestimonialsPageContent({
               ? "Partagez votre expérience et aidez d'autres voyageurs à découvrir le Bénin avec Wonder Tours and Services."
               : "Share your experience and help other travelers discover Benin with Wonder Tours and Services."}
           </p>
-          <Button variant="primary" size="lg" href="/contact">
-            {isFr ? "Partager mon témoignage" : "Share my testimonial"}
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => setFormOpen(true)}
+          >
+            {formOpen
+              ? isFr ? "Écrire mon témoignage" : "Write my testimonial"
+              : isFr ? "Partager mon témoignage" : "Share my testimonial"}
           </Button>
         </div>
       </section>
+
+      {/* Formulaire public : laisser un témoignage (publication immédiate,
+          modérée a posteriori par l'équipe — suppression / masquage).
+          Masqué tant que le visiteur n'a pas cliqué sur « Partager mon
+          témoignage » (ou arrivé avec #partager dans l'URL). */}
+      {formOpen && (
+        <section id="partager" className="py-20 bg-background scroll-mt-24">
+          <div className="container mx-auto px-4 lg:px-8 max-w-2xl">
+            <SectionHeading
+              title={
+                isFr ? "Laissez-nous votre avis" : "Leave us your review"
+              }
+            />
+            <p className="text-text-secondary text-center mb-8 max-w-xl mx-auto">
+              {isFr
+                ? "Quelques mots sur votre voyage suffisent : votre avis est publié immédiatement sur cette page."
+                : "A few words about your trip are enough: your review is published immediately on this page."}
+            </p>
+            <TestimonialFormPublic />
+          </div>
+        </section>
+      )}
     </>
   );
 }

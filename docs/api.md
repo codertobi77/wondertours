@@ -83,6 +83,27 @@ Soumission du formulaire public.
 * Réponse `201` : `{ "message": "Demande envoyée avec succès", "id": "uuid" }`.
 * Emails best effort (Resend) : accusé de réception au visiteur + notification interne (reply-to = email du visiteur) — jamais bloquants pour la requête.
 
+### Témoignages publics
+
+#### `POST /api/testimonials`
+Soumission du formulaire public « Laisser un témoignage » (page `/temoignages`). **Publication immédiate** : le témoignage est créé `isActive=true`, `isVerified=false`, `isFeatured=false` (modération a posteriori dans le dashboard).
+
+```json
+{
+  "name": "Nom visiteur",
+  "country": "optionnel",
+  "rating": 1-5,
+  "circuitId": "uuid optionnel",
+  "date": "2026-12-15",
+  "text": "Témoignage (10 caractères min, 5000 max)",
+  "website": ""
+}
+```
+* `circuitId`, s'il est fourni, doit exister (référence) ; le titre du circuit est affiché dans la notification interne.
+* `date` accepte `""` (formulaire vide). `website` est un **honeypot anti-spam** : s'il est rempli, la réponse est `201` mais rien n'est inséré.
+* Réponse `201` : `{ "message": "Témoignage envoyé avec succès", "id": "uuid" }`.
+* Email best effort (Resend) : notification interne à l'équipe — jamais bloquant pour la requête.
+
 ### Réservations
 
 #### `POST /api/bookings`

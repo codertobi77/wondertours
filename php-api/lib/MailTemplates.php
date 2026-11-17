@@ -204,6 +204,38 @@ final class MailTemplates
         ];
     }
 
+    /**
+     * Notification interne envoyée à l'équipe quand un visiteur publie
+     * un témoignage depuis le site (POST /api/testimonials).
+     *
+     * @param array{name: string, country?: ?string, rating: int, circuit?: ?string, date?: ?string, text: string} $data
+     * @return array{subject: string, html: string}
+     */
+    public static function testimonialNotificationEmail(array $data): array
+    {
+        $rows = [
+            self::infoRow('Nom', self::escapeHtml($data['name'])),
+            self::infoRow('Pays', !empty($data['country']) ? self::escapeHtml($data['country']) : '—'),
+            self::infoRow('Note', str_repeat('★', (int) $data['rating']) . ' (' . $data['rating'] . '/5)'),
+        ];
+        if (!empty($data['circuit'])) {
+            $rows[] = self::infoRow('Circuit', self::escapeHtml($data['circuit']));
+        }
+        if (!empty($data['date'])) {
+            $rows[] = self::infoRow('Date de voyage', self::formatDate($data['date']));
+        }
+        return [
+            'subject' => '[Témoignage] ' . $data['name'] . ' — ' . $data['rating'] . '/5',
+            'html' => self::layout(
+                'Nouveau témoignage publié sur le site',
+                '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">' . implode('', $rows) . "\n"
+                . '<tr><td colspan="2" style="padding:12px 0 0;color:#6B7280;font-size:13px;vertical-align:top;">Témoignage :</td></tr>' . "\n"
+                . '<tr><td colspan="2" style="padding:6px 0;color:#17221F;font-size:13px;line-height:1.6;">' . self::escapeHtml($data['text']) . '</td></tr>' . "\n"
+                . '</table>'
+            ),
+        ];
+    }
+
     // ─────────────────────────────── Réservations ───────────────────────────────
 
     /**

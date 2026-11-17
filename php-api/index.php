@@ -60,6 +60,7 @@ Router::get('/api/blog-categories', [PublicApi::class, 'blogCategories']);
 Router::get('/api/settings', [PublicApi::class, 'settings']);
 Router::post('/api/contact', [PublicApi::class, 'contact']);
 Router::post('/api/bookings', [PublicApi::class, 'bookings']);
+Router::post('/api/testimonials', [PublicApi::class, 'createTestimonial']);
 
 // Authentification dashboard (cookie wt_session) : login/logout,
 // forgot/reset + GET /api/auth/me — garde client du frontend statique.

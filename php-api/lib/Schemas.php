@@ -165,6 +165,25 @@ final class Schemas
         return $v->d();
     }
 
+    /**
+     * Création publique (formulaire « Laisser un témoignage » du site) :
+     * aucun champ de modération (defaults base : isVerified=false,
+     * isFeatured=false, isActive=true — publication immédiate) et
+     * honeypot `website` (champ caché anti-spam, doit rester vide).
+     */
+    public static function testimonialPublicCreate(Validator $v): array
+    {
+        $v->str('name', 2, 100);
+        $v->optStr('country', 100);
+        $v->reqInt('rating', 1, 5);
+        $v->str('text', 10, 5000);
+        $v->optUuid('circuitId');
+        $v->optDateOrEmpty('date');
+        $v->optStr('website', 200, nullable: false);
+
+        return $v->d();
+    }
+
     // ─────────────────────────────── Services ───────────────────────────────
 
     public static function serviceCreate(Validator $v): array

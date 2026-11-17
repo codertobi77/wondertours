@@ -39,4 +39,24 @@ describe("témoignages", () => {
       await deleteTestimonial(testimonial.id);
     }
   });
+
+  test("création publique : défauts de modération (non vérifié, actif)", async () => {
+    // Un témoignage laissé par un visiteur (POST /api/testimonials côté
+    // PHP) est inséré sans champs de modération : les defaults de la base
+    // s'appliquent — publication immédiate, non vérifié, non à la une.
+    const name = uniquePrefix("Visiteur");
+    const testimonial = await createTestimonial({
+      name,
+      rating: 4,
+      text: "Super séjour, l'équipe nous a très bien accueillis à Ouidah.",
+    });
+
+    try {
+      expect(testimonial.isActive).toBe(true);
+      expect(testimonial.isVerified).toBe(false);
+      expect(testimonial.isFeatured).toBe(false);
+    } finally {
+      await deleteTestimonial(testimonial.id);
+    }
+  });
 });

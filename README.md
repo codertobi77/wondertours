@@ -23,7 +23,7 @@
 - **Accueil** : présentation de l'agence, services phares, destinations, témoignages clients ;
 - **Circuits touristiques** : catalogue filtrable (recherche, destination, catégorie, prix maximum, durée) et fiches détaillées — itinéraire jour par jour, points forts, inclus / exclus, prix — servies par `/api/circuits` ;
 - **Séjours et hôtels** : présentation des prestations ;
-- **Témoignages** : avis vérifiés des voyageurs ;
+- **Témoignages** : avis vérifiés des voyageurs ; les visiteurs peuvent **laisser le leur** depuis la page `/temoignages` (publication immédiate, notification interne, modération a posteriori dans le dashboard) ;
 - **Blog** : articles classés par catégories, page de détail par article ;
 - **Contact** : formulaire de demande de devis (type de demande, dates, nombre de voyageurs) → accusé de réception au visiteur + notification interne par email ;
 - **Réservation en ligne** : formulaire relié au circuit choisi, référence unique `WT-XXXXXX` → confirmation client + notification interne par email ;
@@ -119,6 +119,7 @@ Publics :
 | GET | `/api/settings` | Paramètres publics du site |
 | POST | `/api/contact` | Créer une demande de contact (validation) |
 | POST | `/api/bookings` | Créer une réservation (référence `WT-XXXXXX`) |
+| POST | `/api/testimonials` | Publier un témoignage depuis le site public (immédiat, honeypot anti-spam) |
 
 Dashboard (**authentification requise** — cf. ci-dessous) : `/api/dashboard/{circuits,destinations,categories,testimonials,services,blog,blog-categories,bookings,contact-requests,settings,stats,media,users}` avec CRUD complet (GET/POST, `…/[id]` GET/PATCH/DELETE), `…/bookings/[id]/status`, `…/contact-requests/[id]/status` et `POST …/translate` (traduction DeepL, admin+éditeur).
 

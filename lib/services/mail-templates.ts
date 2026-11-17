@@ -167,6 +167,42 @@ export function contactNotificationEmail(data: ContactNotificationData): EmailCo
   };
 }
 
+// ─────────────────────────────── Témoignages publics ───────────────────────────────
+
+export interface TestimonialNotificationData {
+  name: string;
+  country?: string | null;
+  rating: number;
+  circuit?: string | null;
+  /** Date de voyage YYYY-MM-DD (ou null). */
+  date?: string | null;
+  text: string;
+}
+
+/** Notification interne envoyée à l'équipe quand un visiteur publie un témoignage (POST /api/testimonials). */
+export function testimonialNotificationEmail(data: TestimonialNotificationData): EmailContent {
+  return {
+    subject: `[Témoignage] ${data.name} — ${data.rating}/5`,
+    html: layout(
+      "Nouveau témoignage publié sur le site",
+      `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">${[
+        infoRow("Nom", escapeHtml(data.name)),
+        infoRow("Pays", data.country ? escapeHtml(data.country) : "—"),
+        infoRow("Note", `${"★".repeat(data.rating)} (${data.rating}/5)`),
+        data.circuit ? infoRow("Circuit", escapeHtml(data.circuit)) : "",
+        data.date
+          ? infoRow("Date de voyage", formatDate(new Date(`${data.date}T00:00:00Z`)))
+          : "",
+      ]
+        .filter(Boolean)
+        .join("")}
+<tr><td colspan="2" style="padding:12px 0 0;color:#6B7280;font-size:13px;vertical-align:top;">Témoignage :</td></tr>
+<tr><td colspan="2" style="padding:6px 0;color:#17221F;font-size:13px;line-height:1.6;">${escapeHtml(data.text)}</td></tr>
+</table>`
+    ),
+  };
+}
+
 // ─────────────────────────────── Réservations ───────────────────────────────
 
 export interface BookingConfirmationData {

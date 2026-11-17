@@ -13,16 +13,13 @@ export const metadata = generateMetadata({
   path: "/temoignages"
 });
 
-// Page statique : tous les témoignages actifs sont embarqués au build, la
-// pagination ?page= est gérée côté client dans TestimonialsPageContent
-// (useSearchParams exige le <Suspense> ci-dessous).
+// Page statique : les témoignages actifs sont embarqués au build
+// (SSR initial), puis rafraîchis côté client depuis /api/testimonials
+// (TestimonialsPageContent) pour refléter les publications à chaud.
+// La pagination ?page= est gérée côté client (useSearchParams exige
+// le <Suspense> ci-dessous).
 export default async function TestimonialsPage() {
   const testimonials = await getTestimonials();
-
-  const averageRating =
-    testimonials.length > 0
-      ? testimonials.reduce((acc, t) => acc + t.rating, 0) / testimonials.length
-      : 0;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -38,16 +35,13 @@ export default async function TestimonialsPage() {
           descriptionEn="Discover our travelers' experiences and get inspired for your next adventure in Benin, Togo or Ghana."
           ctaFr="Partager mon expérience"
           ctaEn="Share my experience"
-          ctaHref="/contact"
+          ctaHref="#partager"
           image="/photos_site wonder_tours/IMG-20260805-WA0055.jpg"
         />
 
         {/* Corps bilingue (stats, grille, CTA) */}
         <Suspense fallback={null}>
-          <TestimonialsPageContent
-            testimonials={testimonials}
-            averageRating={averageRating}
-          />
+          <TestimonialsPageContent testimonials={testimonials} />
         </Suspense>
       </main>
 

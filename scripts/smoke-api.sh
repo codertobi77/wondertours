@@ -63,11 +63,12 @@ env_value() {
 
 cleanup() {
   set +e
-  if [ -n "$BOOKING_ID" ] || [ -n "$CONTACT_ID" ] || [ -n "$SMOKE_USER_EMAIL" ]; then
+  if [ -n "$BOOKING_ID" ] || [ -n "$CONTACT_ID" ] || [ -n "$TESTIMONIAL_ID" ] || [ -n "$SMOKE_USER_EMAIL" ]; then
     DB_URL=$(env_value DATABASE_URL)
     if [ -n "$DB_URL" ]; then
       [ -n "$BOOKING_ID" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM bookings WHERE id='$BOOKING_ID';" >/dev/null 2>&1
       [ -n "$CONTACT_ID" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM contact_requests WHERE id='$CONTACT_ID';" >/dev/null 2>&1
+      [ -n "$TESTIMONIAL_ID" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM testimonials WHERE id='$TESTIMONIAL_ID';" >/dev/null 2>&1
       [ -n "$SMOKE_USER_EMAIL" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM users WHERE email='$SMOKE_USER_EMAIL';" >/dev/null 2>&1
     fi
   fi
@@ -112,6 +113,18 @@ check "POST /api/contact" "Demande envoyée avec succès" "$(echo "$CONTACT_JSON
 CONTACT_ID=$(echo "$CONTACT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 
 check "POST /api/contact invalide" 400 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/contact" -H "Content-Type: application/json" -d '{"name":"X","email":"pas-un-email","message":"court"}')"
+
+TESTIMONIAL_JSON=$(curl -s -X POST "$BASE_URL/api/testimonials" -H "Content-Type: application/json" \
+  -d '{"name":"Smoke Test","rating":5,"text":"Témoignage de test smoke suffisamment long pour la validation."}')
+check "POST /api/testimonials" "Témoignage envoyé avec succès" "$(echo "$TESTIMONIAL_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['message'])")"
+TESTIMONIAL_ID=$(echo "$TESTIMONIAL_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])" 2>/dev/null || echo "")
+
+check "POST /api/testimonials invalide" 400 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/testimonials" -H "Content-Type: application/json" -d '{"name":"X","rating":9,"text":"court"}')"
+
+HONEY_JSON=$(curl -s -X POST "$BASE_URL/api/testimonials" -H "Content-Type: application/json" \
+  -d '{"name":"Bot Spam","rating":5,"text":"Témoignage robot avec champ caché rempli.","website":"http://spam.example"}')
+check "POST /api/testimonials honeypot" 201 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/testimonials" -H "Content-Type: application/json" -d '{"name":"Bot Spam","rating":5,"text":"Témoignage robot avec champ caché rempli.","website":"http://spam.example"}')"
+check_json "  honeypot : rien inséré (id null)" "True" "$HONEY_JSON" "d['id'] is None"
 
 CIRCUIT_ID=$(curl -s "$BASE_URL/api/circuits?pageSize=1" | python3 -c "import json,sys; print(json.load(sys.stdin)['items'][0]['id'])")
 BOOKING_JSON=$(curl -s -X POST "$BASE_URL/api/bookings" -H "Content-Type: application/json" \

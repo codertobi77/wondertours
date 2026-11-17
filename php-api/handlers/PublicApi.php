@@ -10,6 +10,7 @@ use WT\External;
 use WT\Http;
 use WT\MailTemplates;
 use WT\Model;
+use WT\Schemas;
 use WT\Serial;
 use WT\Validator;
 
@@ -257,6 +258,68 @@ final class PublicApi
             $pageSize,
             static fn (array $row): array => Serial::testimonial($row)
         );
+    }
+
+    /**
+     * POST /api/testimonials — témoignage laissé par un visiteur depuis
+     * le site public. Publication immédiate (defaults base : isActive=true,
+     * isVerified=false) ; l'équipe est notifiée par email et conserve la
+     * modération (suppression / masquage) dans le dashboard. 201 {message, id}.
+     */
+    public static function createTestimonial(): never
+    {
+        $v = Validator::body();
+        Schemas::testimonialPublicCreate($v);
+        $v->fail();
+        $data = $v->d();
+
+        // Honeypot anti-spam : le champ caché « website » ne doit rester
+        // vide que pour un humain. Un robot reçoit un 201 sans insertion.
+        if (!empty($data['website'])) {
+            Http::created(['message' => 'Témoignage envoyé avec succès', 'id' => null]);
+        }
+
+        $country = self::emptyToNull($data['country'] ?? null);
+        $circuitId = $data['circuitId'] ?? null;
+        $circuitTitle = $circuitId !== null
+            ? (Db::val('SELECT title FROM circuits WHERE id = ?', [$circuitId]) ?? null)
+            : null;
+
+        $id = Db::uuid();
+        $now = self::now();
+        Db::run(
+            'INSERT INTO testimonials'
+            . ' (id, name, country, rating, text, circuit_id, date, is_verified, is_featured, is_active, created_at, updated_at)'
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, false, false, true, ?, ?)',
+            [
+                $id,
+                $data['name'],
+                $country,
+                $data['rating'],
+                $data['text'],
+                $circuitId,
+                $data['date'] ?? null,
+                $now,
+                $now,
+            ]
+        );
+
+        // Notification interne best effort (comme contact / bookings).
+        $notification = MailTemplates::testimonialNotificationEmail([
+            'name' => $data['name'],
+            'country' => $country,
+            'rating' => $data['rating'],
+            'circuit' => $circuitTitle,
+            'date' => $data['date'] ?? null,
+            'text' => $data['text'],
+        ]);
+        External::sendEmailSafe([
+            'to' => External::getTeamEmails(),
+            'subject' => $notification['subject'],
+            'html' => $notification['html'],
+        ]);
+
+        Http::created(['message' => 'Témoignage envoyé avec succès', 'id' => $id]);
     }
 
     private static function blogJoins(): string
