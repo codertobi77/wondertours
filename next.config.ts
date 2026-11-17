@@ -19,13 +19,13 @@ import type { NextConfig } from "next";
 // (même origine).
 const nextConfig: NextConfig = process.env.VERCEL
   ? {
-      // Vercel : réécriture /api/* vers l'API PHP (LWS ou Fly.io).
-      // PHP_API_ORIGIN permet de pointer vers un backend temporaire (ex. Fly)
-      // sans modifier le code : https://wondertours-api.fly.dev
+      // Vercel : réécriture /api/* vers l'API PHP de production (LWS).
+      // Cible figée volontairement : PHP_API_ORIGIN (env du projet Vercel)
+      // pourrait encore pointer vers un backend temporaire (Render/Fly)
+      // dépourvu des routes récentes — on l'ignore pour éviter toute
+      // divergence entre projets Vercel.
       async rewrites() {
-        const origin = (
-          process.env.PHP_API_ORIGIN ?? "https://api.wondertoursandservices.com"
-        ).replace(/\/+$/, "");
+        const origin = "https://api.wondertoursandservices.com";
         return [
           {
             source: "/api/:path*",
