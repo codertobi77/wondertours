@@ -53,6 +53,9 @@ jobs:
       - name: Générer le client Prisma
         run: bun run db:generate
 
+      - name: Appliquer les migrations (base de test)
+        run: bun run db:deploy
+
       - name: Lint
         run: bun run lint
 
