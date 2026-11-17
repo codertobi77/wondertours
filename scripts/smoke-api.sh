@@ -64,6 +64,20 @@ env_value() {
 cleanup() {
   set +e
   if [ -n "$BOOKING_ID" ] || [ -n "$CONTACT_ID" ] || [ -n "$TESTIMONIAL_ID" ] || [ -n "$SMOKE_USER_EMAIL" ]; then
+    # Nettoyage via l'API admin (cookie jar) — fonctionne même sans psql/DB_URL.
+    if [ -f "$ADMIN_JAR" ]; then
+      # Balayage best effort : supprime les témoignages « Smoke Test » laissés
+      # par d'anciens runs dont le nettoyage avait échoué.
+      SMOKE_TEST_IDS=$(curl -s -b "$ADMIN_JAR" "$BASE_URL/api/dashboard/testimonials?pageSize=100" \
+        | python3 -c "import json,sys; d=json.load(sys.stdin); print(' '.join(x['id'] for x in d.get('items',[]) if x.get('name')=='Smoke Test'))" 2>/dev/null)
+      for sid in $SMOKE_TEST_IDS; do
+        curl -s -b "$ADMIN_JAR" -X DELETE "$BASE_URL/api/dashboard/testimonials/$sid" >/dev/null 2>&1
+      done
+      [ -n "$TESTIMONIAL_ID" ] && curl -s -b "$ADMIN_JAR" -X DELETE "$BASE_URL/api/dashboard/testimonials/$TESTIMONIAL_ID" >/dev/null 2>&1
+      [ -n "$BOOKING_ID" ] && curl -s -b "$ADMIN_JAR" -X DELETE "$BASE_URL/api/dashboard/bookings/$BOOKING_ID" >/dev/null 2>&1
+      [ -n "$CONTACT_ID" ] && curl -s -b "$ADMIN_JAR" -X DELETE "$BASE_URL/api/dashboard/contact-requests/$CONTACT_ID" >/dev/null 2>&1
+      [ -n "$SMOKE_USER_EMAIL" ] && :
+    fi
     DB_URL=$(env_value DATABASE_URL)
     if [ -n "$DB_URL" ]; then
       [ -n "$BOOKING_ID" ] && psql "${DB_URL%%\?*}" -q -c "DELETE FROM bookings WHERE id='$BOOKING_ID';" >/dev/null 2>&1
