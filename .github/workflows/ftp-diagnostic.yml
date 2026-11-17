@@ -1,0 +1,50 @@
+# Diagnostic FTP temporaire (À SUPPRIMER après le débogage) :
+# liste l'arborescence réelle du serveur LWS (racine FTP + répertoires
+# candidats du déploiement) et commet le résultat dans le dépôt
+# (ftp-diagnostic.txt) pour analyse sans accès aux logs GitHub.
+name: Diagnostic FTP
+
+on:
+  push:
+    branches: [master]
+    paths: ['.github/workflows/ftp-diagnostic.yml']
+  workflow_dispatch:
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Lister l'arborescence FTP
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
+          TU="$(printf '%s' "$FTP_USER" | tr -d '[:space:]')"
+          TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:space:]')"
+          LFTP_OPTS="set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 3"
+          {
+            echo "===== PWD ====="
+            lftp -u "$TU","$TP" "$TH" -e "$LFTP_OPTS; pwd; quit" 2>&1 || true
+            echo "===== ls -la racine FTP ====="
+            lftp -u "$TU","$TP" "$TH" -e "$LFTP_OPTS; ls -la; quit" 2>&1 || true
+            for d in htdocs htdocs/api.wondertoursandservices.com htdocs/api.wondertoursandservices.com/api public_html public_html/htdocs public_html/api www www/api.wondertoursandservices.com api.wondertoursandservices.com; do
+              echo "===== ls -la $d ====="
+              lftp -u "$TU","$TP" "$TH" -e "$LFTP_OPTS; ls -la '$d'; quit" 2>&1 || true
+            done
+          } > ftp-diagnostic.txt
+          wc -l ftp-diagnostic.txt
+
+      - name: Committer le résultat dans le dépôt
+        run: |
+          git config user.name "wondertours-diag"
+          git config user.email "actions@users.noreply.github.com"
+          git add ftp-diagnostic.txt
+          git commit -m "Diagnostic FTP (exécution automatique, à nettoyer)" || echo "rien à committer"
+          git push
