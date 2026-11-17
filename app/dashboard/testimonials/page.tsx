@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { matchesQuery, useApiData } from "@/lib/api-client";
 import { RowActions } from "@/components/dashboard/row-actions";
 import { SearchInput } from "@/components/dashboard/search-input";
@@ -31,10 +30,9 @@ export default function TestimonialsPage() {
             {total} témoignage{total > 1 ? "s" : ""}
           </p>
         </div>
-        <Button href="/dashboard/testimonials/new">
-          <Plus className="w-4 h-4 mr-2" />
-          Nouveau témoignage
-        </Button>
+        {/* Création manuelle retirée : les témoignages arrivent via le
+            formulaire public ; l'admin conserve la modération (édition,
+            masquage, suppression). */}
       </div>
 
       {loading && <LoadingBlock />}
