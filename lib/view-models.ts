@@ -142,6 +142,7 @@ export function toTestimonialVM(
     country: testimonial.country ?? "",
     rating: testimonial.rating,
     text: testimonial.text,
+    textEn: testimonial.textEn ?? null,
     avatar: testimonial.avatarUrl ?? undefined,
     date: toDateString(testimonial.date),
   };

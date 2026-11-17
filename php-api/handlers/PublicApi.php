@@ -285,18 +285,45 @@ final class PublicApi
             ? (Db::val('SELECT title FROM circuits WHERE id = ?', [$circuitId]) ?? null)
             : null;
 
+        // Traduction automatique best effort (DeepL) : l'avis est stocké
+        // dans les deux langues quand possible. Un échec DeepL n'est
+        // JAMAIS bloquant — repli sur le texte d'origine et 201 normal.
+        $original = $data['text'];
+        $lang = $data['lang'] ?? 'fr';
+        $textEn = null;
+        if ($lang === 'en') {
+            // Visiteur anglophone : le texte EN va en textEn, la colonne
+            // FR reçoit la traduction (repli = texte original si échec).
+            $textEn = $original;
+            if (External::isDeeplConfigured()) {
+                try {
+                    $data['text'] = External::translateTexts([$original], 'fr', 'en-US')[0];
+                } catch (\RuntimeException $e) {
+                    $data['text'] = $original;
+                }
+            }
+        } elseif (External::isDeeplConfigured()) {
+            // Visiteur francophone : traduction EN best effort pour textEn.
+            try {
+                $textEn = External::translateTexts([$original], 'en-US', 'fr')[0];
+            } catch (\RuntimeException $e) {
+                $textEn = null;
+            }
+        }
+
         $id = Db::uuid();
         $now = self::now();
         Db::run(
             'INSERT INTO testimonials'
-            . ' (id, name, country, rating, text, circuit_id, date, is_verified, is_featured, is_active, created_at, updated_at)'
-            . ' VALUES (?, ?, ?, ?, ?, ?, ?, false, false, true, ?, ?)',
+            . ' (id, name, country, rating, text, text_en, circuit_id, date, is_verified, is_featured, is_active, created_at, updated_at)'
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, false, false, true, ?, ?)',
             [
                 $id,
                 $data['name'],
                 $country,
                 $data['rating'],
                 $data['text'],
+                $textEn,
                 $circuitId,
                 $data['date'] ?? null,
                 $now,
@@ -304,14 +331,15 @@ final class PublicApi
             ]
         );
 
-        // Notification interne best effort (comme contact / bookings).
+        // Notification interne best effort (comme contact / bookings) —
+        // elle montre toujours le texte original saisi par le visiteur.
         $notification = MailTemplates::testimonialNotificationEmail([
             'name' => $data['name'],
             'country' => $country,
             'rating' => $data['rating'],
             'circuit' => $circuitTitle,
             'date' => $data['date'] ?? null,
-            'text' => $data['text'],
+            'text' => $original,
         ]);
         External::sendEmailSafe([
             'to' => External::getTeamEmails(),

@@ -85,6 +85,7 @@ export function TestimonialFormPublic() {
           circuitId: formData.circuitId || undefined,
           date: formData.travelDate,
           text: formData.text,
+          lang: isFr ? "fr" : "en", // pilote la traduction auto (DeepL)
           website: formData.website, // honeypot
         }),
       });

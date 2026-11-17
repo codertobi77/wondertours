@@ -177,6 +177,9 @@ final class Schemas
         $v->optStr('country', 100);
         $v->reqInt('rating', 1, 5);
         $v->str('text', 10, 5000);
+        // Langue du texte saisi par le visiteur (défaut fr) : pilote la
+        // traduction automatique DeepL côté handler (text/textEn).
+        $v->enum('lang', ['fr', 'en'], 'fr');
         $v->optUuid('circuitId');
         $v->optDateOrEmpty('date');
         $v->optStr('website', 200, nullable: false);

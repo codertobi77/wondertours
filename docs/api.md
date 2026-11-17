@@ -96,11 +96,13 @@ Soumission du formulaire public « Laisser un témoignage » (page `/temoignages
   "circuitId": "uuid optionnel",
   "date": "2026-12-15",
   "text": "Témoignage (10 caractères min, 5000 max)",
+  "lang": "fr",
   "website": ""
 }
 ```
 * `circuitId`, s'il est fourni, doit exister (référence) ; le titre du circuit est affiché dans la notification interne.
 * `date` accepte `""` (formulaire vide). `website` est un **honeypot anti-spam** : s'il est rempli, la réponse est `201` mais rien n'est inséré.
+* `lang` = langue du texte saisi (`fr` par défaut). **Traduction automatique DeepL** : l'avis est stocké dans les deux langues (`text` en FR, `textEn` en EN). Best effort — un échec DeepL ne bloque jamais la publication (repli = texte d'origine, `textEn` reste `null`).
 * Réponse `201` : `{ "message": "Témoignage envoyé avec succès", "id": "uuid" }`.
 * Email best effort (Resend) : notification interne à l'équipe — jamais bloquant pour la requête.
 
