@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppButton } from "@/components/common/whatsapp-button";
@@ -24,7 +25,25 @@ interface AboutContentProps {
 export function AboutContent({ founderBioFr, founderBioEn }: AboutContentProps) {
   const { t, locale } = useLanguage();
   const isFr = locale === "fr";
-  const founderBio = ((isFr ? founderBioFr : founderBioEn) ?? "").trim();
+  const [bioFr, setBioFr] = useState<string | null>(founderBioFr ?? null);
+  const [bioEn, setBioEn] = useState<string | null>(founderBioEn ?? null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((page: { items?: { key: string; value: string | null }[] } | null) => {
+        if (cancelled || !page?.items) return;
+        for (const s of page.items) {
+          if (s.key === "founder_bio_fr") setBioFr(s.value?.trim() || null);
+          if (s.key === "founder_bio_en") setBioEn(s.value?.trim() || null);
+        }
+      })
+      .catch(() => null);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const founderBio = ((isFr ? bioFr : bioEn) ?? "").trim();
 
   const values = isFr
     ? [
