@@ -27,6 +27,7 @@ final class BookingsApi
     {
         Router::get('/api/dashboard/bookings', [self::class, 'list']);
         Router::patch('/api/dashboard/bookings/{id}/status', [self::class, 'updateStatus']);
+        Router::delete('/api/dashboard/bookings/{id}', [self::class, 'delete']);
     }
 
     /** GET — tout rôle authentifié ; q sur nom/email client/référence, filtre status. */
@@ -119,5 +120,21 @@ final class BookingsApi
 
         // Réponse = ligne brute SANS circuit, comme le update Prisma.
         Http::ok(Serial::booking($updated));
+    }
+
+    /** DELETE /{id} — admin uniquement ; 404 « Réservation introuvable ». */
+    public static function delete(string $id): never
+    {
+        Auth::requireSession(['admin']);
+
+        if (!Support::isUuid($id)) {
+            Http::notFound('Réservation introuvable');
+        }
+        $existing = Db::one('SELECT id FROM bookings WHERE id = ?', [$id]);
+        if ($existing === null) {
+            Http::notFound('Réservation introuvable');
+        }
+        Db::run('DELETE FROM bookings WHERE id = ?', [$id]);
+        Http::ok(['message' => 'Réservation supprimée', 'id' => $id]);
     }
 }

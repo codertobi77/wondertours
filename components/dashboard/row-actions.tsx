@@ -160,6 +160,8 @@ export function BookingRowActions({
   return (
     <RowActions
       id={id}
+      resource="bookings"
+      enableDelete
       statusEndpoint={`/api/dashboard/bookings/${id}/status`}
       statuses={[...BOOKING_STATUS_ACTIONS]}
       onChanged={onChanged}
