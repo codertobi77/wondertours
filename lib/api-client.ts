@@ -113,11 +113,12 @@ export function useApiData<T>(path: string): ApiData<T> {
 }
 
 /** Session courante via GET /api/auth/me — garde client du layout dashboard. */
-export function useSession(): { session: Session | null; loading: boolean } {
+export function useSession(enabled = true): { session: Session | null; loading: boolean } {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     apiFetch<ApiAuthPayload>("/api/auth/me")
       .then(({ user }) => {
@@ -140,7 +141,7 @@ export function useSession(): { session: Session | null; loading: boolean } {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return { session, loading };
 }

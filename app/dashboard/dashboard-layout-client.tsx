@@ -34,9 +34,11 @@ export function DashboardLayoutClient({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { session, loading } = useSession();
 
   const isAuthPage = AUTH_PAGES.includes(pathname);
+  // Ne pas appeler /api/auth/me sur les pages de connexion (évite un 401
+  // inutile dans la console avant l'authentification).
+  const { session, loading } = useSession(!isAuthPage);
 
   useEffect(() => {
     if (loading || isAuthPage) return;
