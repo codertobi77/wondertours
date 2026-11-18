@@ -180,6 +180,8 @@ export function ContactRowActions({
   return (
     <RowActions
       id={id}
+      resource="contact-requests"
+      enableDelete
       statusEndpoint={`/api/dashboard/contact-requests/${id}/status`}
       statuses={[...CONTACT_STATUS_ACTIONS]}
       onChanged={onChanged}

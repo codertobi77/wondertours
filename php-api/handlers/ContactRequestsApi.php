@@ -26,6 +26,7 @@ final class ContactRequestsApi
     {
         Router::get('/api/dashboard/contact-requests', [self::class, 'list']);
         Router::patch('/api/dashboard/contact-requests/{id}/status', [self::class, 'updateStatus']);
+        Router::delete('/api/dashboard/contact-requests/{id}', [self::class, 'delete']);
     }
 
     /** GET — tout rôle authentifié ; q sur nom/email/sujet. */
@@ -100,5 +101,21 @@ final class ContactRequestsApi
             Http::notFound(); // P2025 : disparue entre la lecture et l'écriture
         }
         Http::ok(Serial::contactRequest($updated));
+    }
+
+    /** DELETE /{id} — admin uniquement ; 404 « Demande introuvable ». */
+    public static function delete(string $id): never
+    {
+        Auth::requireSession(['admin']);
+
+        if (!Support::isUuid($id)) {
+            Http::notFound('Demande introuvable');
+        }
+        $existing = Db::one('SELECT id FROM contact_requests WHERE id = ?', [$id]);
+        if ($existing === null) {
+            Http::notFound('Demande introuvable');
+        }
+        Db::run('DELETE FROM contact_requests WHERE id = ?', [$id]);
+        Http::ok(['message' => 'Demande supprimée', 'id' => $id]);
     }
 }
