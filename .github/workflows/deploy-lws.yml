@@ -1,44 +1,37 @@
 # Déploiement continu de l'API PHP vers LWS (mutualisé Perso) via FTP/lftp.
 #
-# Le frontend Next.js est déployé séparément sur Vercel (import GitHub, push
-# auto sur master). Ce workflow ne déploie que l'API PHP (php-api/) sous
-# api.wondertoursandservices.com/api/ (document root du sous-domaine
-# api.wondertoursandservices.com sur LWS Perso) et applique les migrations
-# Prisma sur Aiven.
+# Le frontend Next.js est déployé séparément sur Vercel (cf. deploy-frontend.yml).
+# Ce workflow ne déploie que l'API PHP (php-api/). Il est conçu pour ne se
+# déclencher que quand des fichiers backend sont modifiés : une modification
+# frontend seule ne redéploie pas l'API, et inversement.
 #
 # Déclenchement :
-#   - automatique : à chaque CI verte sur master (workflow_run) ;
-#   - manuel : workflow_dispatch (onglet Actions).
-#
-# Ordre (l'API reste disponible pendant la mise à jour) :
-#   1. migrations PostgreSQL (prisma migrate deploy, base Aiven) ;
-#   2. php-api/config.local.php généré depuis les secrets (gitignoré,
-#      uploadé par lftp — c'est la config du serveur) ;
-#   3. upload API → htdocs/api.wondertoursandservices.com/api/
-#      (routeur .htaccess inclus) ;
-#   4. smoke des 39 routes du contrat sur https://api.wondertoursandservices.com.
+#   - automatique : après une CI verte sur master, uniquement si le run CI a
+#     modifié des fichiers backend (php-api/, prisma/, render.yaml…) — sinon le
+#     déploiement est ignoré ;
+#   - manuel : workflow_dispatch (onglet Actions) — toujours déployé ("à la
+#     demande") ;
+#   - repository_dispatch content-updated : déclenché depuis le dashboard
+#     (bouton « Publier le site »).
 #
 # Secrets requis (Settings → Secrets and variables → Actions) :
 #   FTP_HOST, FTP_USER, FTP_PASSWORD   accès FTP cPanel LWS
 #   DATABASE_URL                       PostgreSQL Aiven (sslmode=require)
-#   AUTH_SECRET                        secret JWT (identique à Vercel —
-#                                      sessions compatibles entre stacks)
-#   APP_URL                            https://wondertoursandservices.com —
-#                                      base des liens emails + cible du smoke
+#   AUTH_SECRET                        secret JWT (identique à Vercel — sessions compatibles)
+#   APP_URL                            https://wondertoursandservices.com
 #   ADMIN_EMAIL, ADMIN_PASSWORD        compte admin (smoke + login)
 # Optionnels (fonctionnalités dégradées sinon, jamais bloquants) :
-#   RESEND_API_KEY, DEEPL_API_KEY, IMGBB_API_KEY,
-#   EDITOR_EMAIL, EDITOR_PASSWORD (checks éditeur du smoke)
+#   RESEND_API_KEY, DEEPL_API_KEY, IMGBB_API_KEY, EDITOR_EMAIL, EDITOR_PASSWORD, GH_PAT
 
 name: Deploy PHP API LWS
 
 on:
-  workflow_dispatch:
-  repository_dispatch:
-    types: [content-updated]
   workflow_run:
     workflows: [CI]
     types: [completed]
+  workflow_dispatch:
+  repository_dispatch:
+    types: [content-updated]
 
 concurrency:
   group: deploy-lws
@@ -86,6 +79,36 @@ jobs:
           done
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Un déploiement backend n'est utile que si le run CI a touché le backend.
+      # En workflow_dispatch / repository_dispatch (manuel ou « publier »), on
+      # déploie quoi qu'il arrive.
+      - name: Détecter si ce run modifie le backend
+        id: changes
+        run: |
+          case "${{ github.event_name }}" in
+            workflow_dispatch|repository_dispatch)
+              echo "Déploiement déclenché manuellement : l'API est (re)déployée."
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              ;;
+            workflow_run)
+              # Fichiers modifiés par le push sur master qui a déclenché la CI.
+              if git diff --name-only HEAD~1 HEAD \
+                 | grep -Eq '^(php-api/|prisma/|render\.yaml|scripts/smoke-api\.sh|php-api/scripts/gen-config-local\.php|\.github/workflows/deploy-lws\.yml)'; then
+                echo "Changements backend détectés — déploiement de l'API."
+                echo "changed=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "Aucun changement backend — déploiement API ignoré (modification frontend uniquement)."
+                echo "changed=false" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+          esac
+
+      - name: Ignorer si aucun changement backend
+        if: steps.changes.outputs.changed != 'true'
+        run: echo "Déploiement API ignoré." && exit 0
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -94,24 +117,37 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-        # PHP ne sert qu'à générer php-api/config.local.php
-        # (php-api/scripts/gen-config-local.php — aucune extension requise).
+          extensions: pdo_pgsql, mbstring, curl, openssl, tokenizer, xml, ctype, json, bcmath, fileinfo
+        # PHP ne sert qu'à générer php-api/config.local.php (aucune extension requise).
 
       - name: Écrire le .env du run (éphémère)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          SECURE_COOKIES: "true"
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          EDITOR_EMAIL: ${{ secrets.EDITOR_EMAIL }}
+          EDITOR_PASSWORD: ${{ secrets.EDITOR_PASSWORD }}
         run: |
           cat > .env <<EOF
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
-          APP_URL=${{ secrets.APP_URL }}
-          RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
-          DEEPL_API_KEY=${{ secrets.DEEPL_API_KEY }}
-          IMGBB_API_KEY=${{ secrets.IMGBB_API_KEY }}
-          GITHUB_TOKEN=${{ secrets.GH_PAT }}
+          DATABASE_URL=${DATABASE_URL}
+          AUTH_SECRET=${AUTH_SECRET}
+          APP_URL=${APP_URL}
+          RESEND_API_KEY=${RESEND_API_KEY}
+          DEEPL_API_KEY=${DEEPL_API_KEY}
+          IMGBB_API_KEY=${IMGBB_API_KEY}
+          GITHUB_TOKEN=${GITHUB_TOKEN}
           SECURE_COOKIES=true
-          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
-          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
-          EDITOR_EMAIL=${{ secrets.EDITOR_EMAIL }}
-          EDITOR_PASSWORD=${{ secrets.EDITOR_PASSWORD }}
+          ADMIN_EMAIL=${ADMIN_EMAIL}
+          ADMIN_PASSWORD=${ADMIN_PASSWORD}
+          EDITOR_EMAIL=${EDITOR_EMAIL}
+          EDITOR_PASSWORD=${EDITOR_PASSWORD}
           EOF
 
       - name: Installer les dépendances

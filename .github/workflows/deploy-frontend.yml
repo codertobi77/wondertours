@@ -1,0 +1,80 @@
+# Déploiement continu du frontend Next.js vers Vercel.
+#
+# Déployé séparément de l'API PHP (cf. deploy-lws.yml) : une modification
+# backend seule ne redéploie pas le frontend, et inversement.
+#
+# Déclenchement :
+#   - automatique : push sur master ayant modifié des fichiers frontend
+#     (app/, lib/, components/, contexts/, config Next.js, dépendances, tests…) ;
+#   - manuel : workflow_dispatch (onglet Actions) — pour redéployer le frontend
+#     seul, "à la demande", sans toucher à l'API.
+#
+# Le frontend est servi par Vercel sous https://wondertoursandservices.com et
+# consomme l'API PHP via le proxy /api/* → api.wondertoursandservices.com
+# (next.config.ts).
+#
+# Secrets requis (Settings → Secrets and variables → Actions) :
+#   VERCEL_TOKEN        jeton d'accès Vercel (scope deploy)
+#   VERCEL_ORG_ID       identifiant de l'organisation Vercel
+#   VERCEL_PROJECT_ID   identifiant du projet Vercel
+#
+# Note : si vous utilisez ce workflow, désactivez les déploiements automatiques
+# de Vercel sur push (intégration GitHub) pour éviter les doubles déploiements
+# du frontend.
+
+name: Deploy Frontend Next.js (Vercel)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'contexts/**'
+      - 'lib/**'
+      - 'middleware.ts'
+      - 'next.config.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - 'package-lock.json'
+      - 'postcss.config.mjs'
+      - 'eslint.config.mjs'
+      - 'tsconfig.json'
+      - 'public/**'
+      - 'prisma/**'
+      - 'tests/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Installer les dépendances
+        run: bun install --frozen-lockfile
+
+      - name: Générer le client Prisma
+        run: bun run db:generate
+
+      # Vérifie que le build (export statique) réussit avant de déployer.
+      - name: Build Next.js (export statique)
+        run: bun run build
+
+      - name: Déployer en production sur Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel@latest
+          vercel --prod --token "$VERCEL_TOKEN" --yes

@@ -51,7 +51,11 @@ export function Header({ onMenuClick, user }: HeaderProps) {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => null);
     try {
       localStorage.removeItem("wt_token");
-      document.cookie = "wt_auth=; path=/; max-age=0; SameSite=Lax";
+      const secure = location.protocol === "https:";
+      document.cookie =
+        "wt_session=; path=/; max-age=0" + (secure ? "; Secure" : "");
+      document.cookie =
+        "wt_auth=; path=/; max-age=0; SameSite=Lax" + (secure ? "; Secure" : "");
     } catch {
       // stockage indisponible
     }

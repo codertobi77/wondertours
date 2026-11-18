@@ -37,9 +37,31 @@ export default function LoginPage() {
         if (data?.token) {
           try {
             localStorage.setItem("wt_token", data.token);
-            document.cookie = "wt_auth=1; path=/; max-age=604800; SameSite=Lax";
+            const secure = location.protocol === "https:";
+            // Le cookie httpOnly wt_session posé par l'API peut être retiré
+            // par le proxy Vercel (cross-origin : frontend sur
+            // wondertoursandservices.com, API sur api.wondertoursandservices.com).
+            // On en duplique une copie côté client, envoyée avec chaque
+            // requête /api/* (credentials: include) et lue par le middleware,
+            // ce qui évite la boucle login → dashboard → login quand le
+            // cookie httpOnly n'a pas été conservé. Non httpOnly (posé par
+            // JS) — le token est déjà accessible via wt_token/localStorage ;
+            // le cookie httpOnly de l'API reste la défense en profondeur
+            // quand le proxy le préserve.
+            document.cookie = [
+              `wt_session=${data.token}`,
+              "path=/",
+              "max-age=604800",
+              "SameSite=Lax",
+              secure ? "Secure" : "",
+            ]
+              .filter(Boolean)
+              .join("; ");
+            document.cookie =
+              "wt_auth=1; path=/; max-age=604800; SameSite=Lax" +
+              (secure ? "; Secure" : "");
           } catch {
-            // stockage indisponible — le cookie httpOnly suffira
+            // stockage indisponible — le cookie httpOnly de l'API suffira s'il est conservé
           }
         }
         router.replace("/dashboard");
