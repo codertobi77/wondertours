@@ -65,6 +65,7 @@ export function RowActions({
     try {
       const response = await fetch(url, {
         method,
+        credentials: "include",
         headers: body ? { "Content-Type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       });
