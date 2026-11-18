@@ -107,10 +107,13 @@ final class MediaApi
         if ($size > self::MAX_FILE_SIZE) {
             Http::badRequest('Fichier trop volumineux (max 5 Mo)');
         }
-        $mimeType = (string) ($file['type'] ?? '');
-        if ($mimeType === '' || !in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            Http::badRequest('Type de fichier non autorisé (' . ($mimeType !== '' ? $mimeType : 'inconnu') . ')');
+        // Le MIME déclaré par le client ($file['type']) est contrefaite : on
+        // détermine le véritable type depuis le contenu du fichier temporaire.
+        $realMime = mime_content_type((string) $file['tmp_name']) ?: '';
+        if ($realMime === '' || !in_array($realMime, self::ALLOWED_MIME_TYPES, true)) {
+            Http::badRequest('Type de fichier non autorisé (' . ($realMime !== '' ? $realMime : 'inconnu') . ')');
         }
+        $mimeType = $realMime;
 
         // Nom sûr : alphanumérique + tirets, préfixe « Date.now() » en ms.
         $safeName = self::safeName((string) $file['name']);
@@ -159,7 +162,6 @@ final class MediaApi
                 Support::now(),
             ]
         );
-        \WT\External::triggerRebuild();
         Http::created(Serial::mediaFile($row));
     }
 
@@ -198,7 +200,6 @@ final class MediaApi
         if ($row === null) {
             Http::notFound(); // P2025
         }
-        \WT\External::triggerRebuild();
         Http::ok(Serial::mediaFile($row));
     }
 
@@ -221,7 +222,6 @@ final class MediaApi
         if (is_string($media['storage_path']) && str_starts_with($media['storage_path'], '/')) {
             @unlink($media['storage_path']);
         }
-        \WT\External::triggerRebuild();
         Http::ok(['message' => 'Fichier supprimé', 'id' => $id, 'url' => $media['url']]);
     }
 

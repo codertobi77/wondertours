@@ -97,6 +97,7 @@ final class UsersApi
         $v->bool('isActive', true);
         $v->fail();
         $data = $v->d();
+        $data['email'] = mb_strtolower((string) $data['email']);
 
         $row = Db::one(
             'INSERT INTO users (id, email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)'

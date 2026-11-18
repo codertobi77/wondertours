@@ -20,7 +20,6 @@
 11. [Utiliser la médiathèque](#11-utiliser-la-médiathèque)
 12. [Gérer les comptes utilisateurs (admin)](#12-gérer-les-comptes-utilisateurs-admin)
 13. [Configurer les paramètres du site](#13-configurer-les-paramètres-du-site)
-14. [Publier les modifications sur le site](#14-publier-les-modifications-sur-le-site)
 15. [Récapitulatif des emails automatiques](#15-récapitulatif-des-emails-automatiques)
 16. [Bonnes pratiques et dépannage](#16-bonnes-pratiques-et-dépannage)
 
@@ -104,7 +103,7 @@ Chaque membre de l'équipe dispose d'un compte avec un rôle précis :
 | **Éditeur** | Gérer les contenus, les réservations, les contacts, la médiathèque et les paramètres — **mais pas les comptes utilisateurs** |
 | **Lecteur** | **Consultation uniquement** : il voit tout le contenu mais ne peut rien créer, modifier ni supprimer |
 
-Ce que vous pouvez faire se reflète dans l'interface : le menu « Utilisateurs » n'apparaît que pour les administrateurs, le bouton « Publier le site » n'apparaît pas pour les lecteurs, et les boutons de modification sont masqués ou refusés si votre rôle ne le permet pas.
+Ce que vous pouvez faire se reflète dans l'interface : le menu « Utilisateurs » n'apparaît que pour les administrateurs, et les boutons de modification sont masqués ou refusés si votre rôle ne le permet pas.
 
 Votre rôle est affiché dans le menu utilisateur en haut à droite : **Administrateur**, **Éditeur** ou **Lecteur**.
 
@@ -390,28 +389,6 @@ Modifiez les champs, puis cliquez sur **« Enregistrer les modifications »**. L
 
 ---
 
-## 14. Publier les modifications sur le site
-
-La plupart des contenus (circuits, destinations, catégories, services, blog, témoignages modérés) sont figés au moment du build : après les avoir modifiés, cliquez sur **« Publier le site »** pour les rendre visibles.
-
-- Cliquez dessus après une série de modifications importantes.
-- Un message confirme : « Rebuild déclenché — le site sera mis à jour dans ~3 min. »
-- Patientez environ **3 minutes**, puis vérifiez le résultat sur le site public (actualisez la page avec `Ctrl + F5` si nécessaire).
-
-> 💡 À retenir : **enregistrer ≠ publier** pour les contenus figés au build. En revanche, la **biographie du fondateur** et les **nouveaux témoignages publics** apparaissent sans publication manuelle.
-
----
-
-## 15. Récapitulatif des emails automatiques
-
-Le site envoie automatiquement les emails suivants :
-
-| Événement | Destinataire | Email |
-|-----------|--------------|-------|
-| Demande de contact (site public) | Visiteur | Accusé de réception (réponse promise sous 24–48 h) |
-| Demande de contact (site public) | L'équipe | Notification interne avec le détail de la demande |
-| Réservation (site public) | Client | Confirmation avec la référence `WT-XXXXXX` |
-| Réservation (site public) | L'équipe | Notification interne |
 | Témoignage laissé par un visiteur (site public) | L'équipe | « [Témoignage] {nom} — {note}/5 » (avis publié immédiatement sur le site) |
 | **Changement de statut d'une réservation (dashboard)** | Client | « Votre réservation WT-XXXXXX est confirmée / annulée / terminée / en attente » |
 | Changement de statut d'une demande de contact | — | Aucun email |
@@ -443,7 +420,6 @@ Les emails portent la signature « Wonder Tours and Services — Ouidah, Bénin 
 | Je ne vois pas le menu « Utilisateurs » | Normal : ce menu est réservé aux administrateurs |
 | Les boutons de modification n'apparaissent pas / une action est refusée | Votre rôle est « Lecteur » (lecture seule) ; demandez à un admin de passer votre compte en « Éditeur » |
 | Le bouton « Traduire en anglais » échoue | Le service DeepL est momentanément indisponible ou non configuré ; réessayez plus tard ou saisissez les textes anglais à la main |
-| Mes changements n'apparaissent pas sur le site | Cliquez sur « Publier le site », patientez ~3 minutes, puis actualisez le site (Ctrl + F5) |
 | L'image refuse de s'uploader | Vérifiez le format (JPEG, PNG, WebP, GIF, SVG) et la taille (5 Mo max) |
 | Le lien de réinitialisation est refusé | Il a expiré (1 h) ou a déjà été utilisé : demandez-en un nouveau |
 | L'email de réinitialisation n'arrive pas | Vérifiez les spams ; le message de confirmation s'affiche même si l'adresse est inconnue — vérifiez l'orthographe de l'email |

@@ -33,7 +33,6 @@ final class DashboardApi
             'serializer' => [Serial::class, 'circuit'],
             'label' => 'Circuit',
             'deletedMessage' => 'Circuit supprimé',
-            'rebuild' => true,
             'search' => ['title', 'description'],
             'orderBy' => 't.is_featured DESC, t.created_at DESC',
             'slugTable' => 'circuit',
@@ -56,7 +55,6 @@ final class DashboardApi
             'serializer' => [Serial::class, 'destination'],
             'label' => 'Destination',
             'deletedMessage' => 'Destination supprimée',
-            'rebuild' => true,
             'search' => ['name', 'country'],
             'orderBy' => 't.name ASC',
             'slugTable' => 'destination',
@@ -72,7 +70,6 @@ final class DashboardApi
             'serializer' => [Serial::class, 'category'],
             'label' => 'Catégorie',
             'deletedMessage' => 'Catégorie supprimée',
-            'rebuild' => true,
             'search' => ['name'],
             'orderBy' => 't.sort_order ASC, t.name ASC',
             'slugTable' => 'category',
@@ -89,7 +86,6 @@ final class DashboardApi
             'serializer' => [Serial::class, 'testimonial'],
             'label' => 'Témoignage',
             'deletedMessage' => 'Témoignage supprimé',
-            'rebuild' => true,
             'search' => ['name', 'text'],
             'orderBy' => 't.is_featured DESC, t.date DESC',
             'create' => [Schemas::class, 'testimonialCreate'],
@@ -103,7 +99,6 @@ final class DashboardApi
             'serializer' => [Serial::class, 'service'],
             'label' => 'Service',
             'deletedMessage' => 'Service supprimé',
-            'rebuild' => true,
             'search' => ['title', 'description'],
             'orderBy' => 't.sort_order ASC, t.created_at ASC',
             'create' => [Schemas::class, 'serviceCreate'],
@@ -120,7 +115,6 @@ final class DashboardApi
             'serializer' => [Serial::class, 'blogPost'],
             'label' => 'Article',
             'deletedMessage' => 'Article supprimé',
-            'rebuild' => true,
             'search' => ['title', 'excerpt'],
             'orderBy' => 't.is_featured DESC, t.published_at DESC',
             'slugTable' => 'blogPost',
@@ -144,7 +138,6 @@ final class DashboardApi
             'serializer' => [Serial::class, 'blogCategory'],
             'label' => 'Catégorie',
             'deletedMessage' => 'Catégorie supprimée',
-            'rebuild' => true,
             'search' => ['name'],
             'orderBy' => 't.sort_order ASC, t.name ASC',
             'slugTable' => 'blogCategory',
@@ -152,29 +145,6 @@ final class DashboardApi
             'create' => [Schemas::class, 'blogCategoryCreate'],
             'update' => [Schemas::class, 'blogCategoryUpdate'],
         ]);
-
-        // Publication manuelle : déclenche un rebuild du site (best-effort).
-        Router::post('/api/dashboard/publish', [self::class, 'publish']);
-    }
-
-    /** Enregistre les 5 routes CRUD d'une ressource dashboard. */
-    private static function crud(string $resource, string $path, array $spec): void
-    {
-        Crud::register($resource, $spec);
-        Router::get($path, fn () => Crud::list($resource));
-        Router::post($path, fn () => Crud::create($resource));
-        Router::get($path . '/{id}', fn (string $id) => Crud::get($resource, $id));
-        Router::patch($path . '/{id}', fn (string $id) => Crud::update($resource, $id));
-        Router::delete($path . '/{id}', fn (string $id) => Crud::delete($resource, $id));
-    }
-
-    /** POST /api/dashboard/publish — déclenche un rebuild du site (admin+éditeur). */
-    public static function publish(): never
-    {
-        Auth::requireSession(['admin', 'editor']);
-        \WT\External::triggerRebuild(true);
-        Http::ok(['message' => 'Rebuild du site déclenché', 'triggered' => true]);
-    }
 
     // ─────────────────────── Règles métier blog (publishedAt) ───────────────────────
 

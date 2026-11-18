@@ -11,6 +11,7 @@ use WT\Http;
 use WT\MailTemplates;
 use WT\Password;
 use WT\PasswordReset;
+use WT\RateLimiter;
 use WT\Router;
 use WT\Support;
 use WT\Validator;
@@ -55,6 +56,29 @@ final class AuthApi
         ];
     }
 
+    /** Adresse IP du client (tient compte d'un éventuel proxy réputé). */
+    private static function clientIp(): string
+    {
+        $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? null;
+        if (is_string($forwarded) && $forwarded !== '') {
+            $parts = array_map('trim', explode(',', $forwarded));
+            $ip = end($parts);
+            if (is_string($ip) && $ip !== '') {
+                return $ip;
+            }
+        }
+        return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    }
+
+    /** Rate limiting sur l'IP pour un endpoint donné. Renvoie 429 si dépassé. */
+    private static function rateLimit(string $endpoint): void
+    {
+        $limiter = new RateLimiter($endpoint, 10, 900); // 10 requêtes / 15 min par IP
+        if (!$limiter->check(self::clientIp())) {
+            Http::json(['error' => 'Trop de tentatives. Réessayez plus tard.'], 429);
+        }
+    }
+
     /**
      * POST /api/auth/login — email trim+lowercase (sans max, comme la route
      * Next), mot de passe 1..100 ; 401 générique si utilisateur inexistant,
@@ -67,6 +91,7 @@ final class AuthApi
         $v->password('password', 1, 100);
         $v->fail();
         $data = $v->d();
+        self::rateLimit('auth_login');
 
         // verifyUserPassword : isActive contrôlé AVANT le mot de passe.
         $user = Db::one('SELECT * FROM users WHERE email = ?', [$data['email']]);
@@ -109,6 +134,7 @@ final class AuthApi
         $v->email('email', required: true, lowercase: true, max: 255);
         $v->fail();
         $data = $v->d();
+        self::rateLimit('auth_forgot');
 
         // deleteExpiredPasswordResetTokens().catch(() => {}) — jamais bloquant.
         try {
@@ -147,6 +173,7 @@ final class AuthApi
         $v->password('password', 8, 100);
         $v->fail();
         $data = $v->d();
+        self::rateLimit('auth_reset');
 
         $userId = PasswordReset::consumeToken($data['token']);
         if ($userId === null) {
