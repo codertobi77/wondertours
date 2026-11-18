@@ -63,10 +63,20 @@ export function RowActions({
     setBusy(true);
     setError(null);
     try {
+      let bearer: Record<string, string> = {};
+      try {
+        const token = localStorage.getItem("wt_token");
+        if (token) bearer = { Authorization: `Bearer ${token}` };
+      } catch {
+        // stockage indisponible
+      }
       const response = await fetch(url, {
         method,
         credentials: "include",
-        headers: body ? { "Content-Type": "application/json" } : undefined,
+        headers: {
+          ...bearer,
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!response.ok) {

@@ -27,12 +27,29 @@ export class ApiError extends Error {
   }
 }
 
+/** En-tête Authorization depuis le jeton stocké (repli si cookie absent). */
+function authHeader(): Record<string, string> {
+  try {
+    const token = localStorage.getItem("wt_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 /** fetch JSON vers l'API (chemin relatif /api/*, proxy par Vercel). */
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(path, { credentials: "include", ...init });
+  const response = await fetch(path, {
+    credentials: "include",
+    ...init,
+    headers: {
+      ...authHeader(),
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  });
   if (!response.ok) {
     let message = `Erreur ${response.status}`;
     try {

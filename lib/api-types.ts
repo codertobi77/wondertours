@@ -229,7 +229,8 @@ export interface ApiMediaFile {
   createdAt: string;
 }
 
-/** GET /api/auth/me et POST /api/auth/login : {user: {id, email, name, role}}. */
+/** GET /api/auth/me et POST /api/auth/login : {user: {id, email, name, role}}.
+ *  `token` (login uniquement) = repli Bearer si le cookie n'est pas conservé. */
 export interface ApiAuthPayload {
   user: {
     id: string;
@@ -237,4 +238,5 @@ export interface ApiAuthPayload {
     name: string;
     role: "admin" | "editor" | "viewer";
   };
+  token?: string;
 }

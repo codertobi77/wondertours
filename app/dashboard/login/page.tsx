@@ -28,6 +28,20 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       if (response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          token?: string;
+        } | null;
+        // Repli Bearer : si le cookie de session n'est pas conservé par le
+        // navigateur, on garde le jeton côté client et on signale la session
+        // via un cookie lisible par le middleware.
+        if (data?.token) {
+          try {
+            localStorage.setItem("wt_token", data.token);
+            document.cookie = "wt_auth=1; path=/; max-age=604800; SameSite=Lax";
+          } catch {
+            // stockage indisponible — le cookie httpOnly suffira
+          }
+        }
         router.replace("/dashboard");
         return;
       }

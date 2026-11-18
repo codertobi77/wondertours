@@ -86,7 +86,9 @@ final class AuthApi
         Db::run('UPDATE users SET last_login_at = ? WHERE id = ?', [Support::now(), $user['id']]);
 
         Auth::sendCookie($token);
-        Http::ok(self::payload($user));
+        // `token` renvoyé aussi dans le corps : repli Bearer côté client si
+        // le cookie n'est pas conservé (proxy cross-domaine).
+        Http::ok(self::payload($user) + ['token' => $token]);
     }
 
     /** POST /api/auth/logout — {success: true} + cookie invalidé. */

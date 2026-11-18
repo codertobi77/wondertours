@@ -61,6 +61,13 @@ final class Auth
     public static function session(): ?array
     {
         $token = $_COOKIE[self::COOKIE_NAME] ?? null;
+        // Repli : jeton Bearer (le proxy Vercel peut perdre le cookie).
+        if (!is_string($token) || $token === '') {
+            $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+            if (is_string($header) && preg_match('/^Bearer\s+(.+)$/i', $header, $m) === 1) {
+                $token = trim($m[1]);
+            }
+        }
         if (!is_string($token) || $token === '') {
             return null;
         }

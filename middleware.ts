@@ -13,10 +13,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protection des routes /dashboard/* : cookie de session requis.
+  // Protection des routes /dashboard/* : cookie de session requis (ou marqueur
+  // de session client si le cookie httpOnly n'a pas pu être conservé).
   if (pathname.startsWith("/dashboard")) {
     const token = request.cookies.get("wt_session")?.value;
-    if (!token) {
+    const marker = request.cookies.get("wt_auth")?.value;
+    if (!token && !marker) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard/login";
       return NextResponse.redirect(url);

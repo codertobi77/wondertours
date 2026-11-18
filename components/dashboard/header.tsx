@@ -48,7 +48,13 @@ export function Header({ onMenuClick, user }: HeaderProps) {
    * la garde client du layout renvoie alors vers /dashboard/login. */
   async function handleLogout() {
     setShowUserMenu(false);
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => null);
+    try {
+      localStorage.removeItem("wt_token");
+      document.cookie = "wt_auth=; path=/; max-age=0; SameSite=Lax";
+    } catch {
+      // stockage indisponible
+    }
     window.location.assign("/dashboard/login");
   }
 
