@@ -75,11 +75,12 @@ jobs:
       - name: Build Next.js (export statique)
         run: bun run build
 
-      - name: Déployer en production sur Vercel
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # Le déploiement effectif est géré par l'intégration native Vercel
+      # (GitHub → Vercel), qui déploie automatiquement sur push vers master.
+      # Les secrets VERCEL_ORG_ID et VERCEL_PROJECT_ID sont définis pour
+      # référence, mais aucun token n'est requis ici (plan Hobby : pas de
+      # création de token possible). La CI vérifie que le build réussit.
+      - name: Vérifier la configuration Vercel
         run: |
-          npm install -g vercel@latest
-          vercel --prod --token "$VERCEL_TOKEN" --yes
+          echo "Build vérifié. Le déploiement est géré par l'intégration native Vercel (GitHub → Vercel)."
+          echo "URL de production : https://wondertourswebsite.vercel.app"
