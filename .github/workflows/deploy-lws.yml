@@ -182,36 +182,29 @@ jobs:
           TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
           TU="$(printf '%s' "$FTP_USER" | tr -d '[:space:]')"
           TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:space:]')"
-
-          lftp -d -u "$TU","$TP" "$TH" <<'LFTP'
-set ftp:ssl-allow true
-set ssl:verify-certificate no
-set ftp:ignore-pasv-address yes
-set ftp:passive-mode true
-set net:timeout 45
-set net:max-retries 3
-
-# Vérifier la connexion
-pwd
-ls /
-
-# 1. Déployer l'API
-mirror -R --delete --parallel=1 --verbose=2 \
-  -X router-dev.php \
-  -X test-connexion.php \
-  -X config.example.php \
-  -X scripts/ \
-  -X scripts/* \
-  php-api/ htdocs/api.wondertoursandservices.com/api/
-
-# 2. Déployer le .htaccess
-put .htaccess-api-root -o htdocs/api.wondertoursandservices.com/.htaccess
-
-# 3. Modifier les permissions
-chmod 600 htdocs/api.wondertoursandservices.com/api/config.local.php
-
-quit
-LFTP
+          {
+            printf '%s\n' "set ftp:ssl-allow true"
+            printf '%s\n' "set ssl:verify-certificate no"
+            printf '%s\n' "set ftp:ignore-pasv-address yes"
+            printf '%s\n' "set ftp:passive-mode true"
+            printf '%s\n' "set net:timeout 45"
+            printf '%s\n' "set net:max-retries 3"
+            printf '%s\n' ""
+            printf '%s\n' "# Vérifier la connexion"
+            printf '%s\n' "pwd"
+            printf '%s\n' "ls /"
+            printf '%s\n' ""
+            printf '%s\n' "# 1. Déployer l'API"
+            printf '%s\n' "mirror -R --delete --parallel=1 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X 'scripts/*' php-api/ htdocs/api.wondertoursandservices.com/api/"
+            printf '%s\n' ""
+            printf '%s\n' "# 2. Déployer le .htaccess"
+            printf '%s\n' "put .htaccess-api-root -o htdocs/api.wondertoursandservices.com/.htaccess"
+            printf '%s\n' ""
+            printf '%s\n' "# 3. Modifier les permissions"
+            printf '%s\n' "chmod 600 htdocs/api.wondertoursandservices.com/api/config.local.php"
+            printf '%s\n' ""
+            printf '%s\n' "quit"
+          } | lftp -u "$TU","$TP" "$TH" -f -
         # --delete retire côté serveur les fichiers retirés du dépôt.
         # Document root LWS : api.wondertoursandservices.com/ (à la racine FTP)
         # L'API est servie sous https://api.wondertoursandservices.com/api/*
