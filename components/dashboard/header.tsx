@@ -63,64 +63,67 @@ export function Header({ onMenuClick, user }: HeaderProps) {
             />
           </div>
 
-          {/* User Menu */}
-          <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 pl-1 sm:pl-2 md:pl-4 border-l border-gray-200 relative">
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-1 md:gap-2"
-            >
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-black rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-lg border-2 border-amber-500">
-                {userInitial}
-              </div>
-              <span className="hidden md:flex flex-col items-start leading-tight">
-                <span className="text-sm font-medium text-gray-900">{userName}</span>
-                {roleLabel && (
-                  <span className="text-xs text-gray-500">{roleLabel}</span>
-                )}
-              </span>
-              <ChevronDown className="w-4 h-4 text-gray-600 md:hidden" />
-            </button>
-            <button
-              className="hidden md:block p-2 text-gray-600 hover:text-red-600 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleLogout();
-              }}
-              title="Déconnexion"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+          {/* Actions */}
+          <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-4">
+            {/* User Menu */}
+            <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 pl-1 sm:pl-2 md:pl-4 border-l border-gray-200 relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-1 md:gap-2"
+              >
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-black rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-lg border-2 border-amber-500">
+                  {userInitial}
+                </div>
+                <span className="hidden md:flex flex-col items-start leading-tight">
+                  <span className="text-sm font-medium text-gray-900">{userName}</span>
+                  {roleLabel && (
+                    <span className="text-xs text-gray-500">{roleLabel}</span>
+                  )}
+                </span>
+                <ChevronDown className="w-4 h-4 text-gray-600 md:hidden" />
+              </button>
+              <button
+                className="hidden md:block p-2 text-gray-600 hover:text-red-600 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleLogout();
+                }}
+                title="Déconnexion"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
 
-            {/* Mobile User Dropdown */}
-            {showUserMenu && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 md:hidden">
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center text-white font-semibold text-lg border-2 border-amber-500">
-                      {userInitial}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{userName}</p>
-                      <p className="text-sm text-gray-500 truncate">{user?.email}</p>
-                      {roleLabel && (
-                        <p className="text-xs text-gray-400">{roleLabel}</p>
-                      )}
+              {/* Mobile User Dropdown */}
+              {showUserMenu && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 md:hidden">
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center text-white font-semibold text-lg border-2 border-amber-500">
+                        {userInitial}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{userName}</p>
+                        <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                        {roleLabel && (
+                          <p className="text-xs text-gray-400">{roleLabel}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  <div className="p-2">
+                    <button
+                      className="w-full flex items-center gap-3 px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      onClick={() => {
+                        void handleLogout();
+                      }}
+                    >
+                      <LogOut className="w-5 h-5 text-red-600" />
+                      <span className="text-red-600">Déconnexion</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="p-2">
-                  <button
-                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    onClick={() => {
-                      void handleLogout();
-                    }}
-                  >
-                    <LogOut className="w-5 h-5 text-red-600" />
-                    <span className="text-red-600">Déconnexion</span>
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </header>

@@ -145,6 +145,18 @@ final class DashboardApi
             'create' => [Schemas::class, 'blogCategoryCreate'],
             'update' => [Schemas::class, 'blogCategoryUpdate'],
         ]);
+    }
+
+    /** Enregistre les 5 routes CRUD d'une ressource dashboard. */
+    private static function crud(string $resource, string $path, array $spec): void
+    {
+        Crud::register($resource, $spec);
+        Router::get($path, fn () => Crud::list($resource));
+        Router::post($path, fn () => Crud::create($resource));
+        Router::get($path . '/{id}', fn (string $id) => Crud::get($resource, $id));
+        Router::patch($path . '/{id}', fn (string $id) => Crud::update($resource, $id));
+        Router::delete($path . '/{id}', fn (string $id) => Crud::delete($resource, $id));
+    }
 
     // ─────────────────────── Règles métier blog (publishedAt) ───────────────────────
 

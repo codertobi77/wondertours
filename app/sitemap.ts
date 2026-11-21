@@ -2,14 +2,10 @@ import { MetadataRoute } from "next";
 import { SITE_CONFIG } from "@/lib/constants";
 import { getBlogSlugs, getCircuitSlugs } from "@/lib/content";
 
-// `output: export` : les routes de métadonnées doivent être statiques.
-export const dynamic = "force-static";
-
 // Sitemap généré au build : pages statiques + une URL par circuit et par
 // article publié (slugs récupérés de l'API déployée, cf. lib/content).
 // Si l'API est indisponible au build, le sitemap ne contient que les pages
 // statiques — le build ne doit pas échouer sur le contenu.
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE_CONFIG.url;
 

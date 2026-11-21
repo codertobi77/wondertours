@@ -35,7 +35,7 @@ export default function TestimonialsPage() {
             masquage, suppression). */}
       </div>
 
-      {loading && <LoadingBlock />}
+      {loading && <LoadingBlock variant="table" />}
       {error && <ErrorBlock message={error} />}
 
       {!loading && !error && (

@@ -5,7 +5,6 @@ import { Star, ChevronLeft, ChevronRight } from "lucide-react";import { SectionH
 import { Button } from "@/components/ui/button";
 import { TestimonialsContent } from "@/components/testimonials/testimonials-content";
 import {
-  TestimonialFormPublic,
   TESTIMONIAL_CREATED_EVENT,
 } from "@/components/testimonials/testimonial-form-public";
 import { toTestimonialVM } from "@/lib/view-models";
@@ -13,6 +12,7 @@ import { useLanguage } from "@/contexts/language-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Testimonial } from "@/lib/data/testimonials";
 import type { ApiTestimonial } from "@/lib/api-types";
+import { PublicTestimonialForm } from "@/components/testimonials/public-testimonial-form";
 
 interface TestimonialsPageContentProps {
   /** Tous les témoignages actifs, embarqués dans la page statique. */
@@ -35,6 +35,7 @@ export function TestimonialsPageContent({
   const isFr = locale === "fr";
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const initialPage =
     Number.parseInt(searchParams.get("page") ?? "1", 10) || 1;
@@ -75,49 +76,6 @@ export function TestimonialsPageContent({
     };
   }, []);
 
-  // Section formulaire masquée par défaut : elle apparaît au clic sur
-  // « Partager mon témoignage » (CTA final) ou quand l'URL contient
-  // #partager (CTA du hero, lien direct). À l'ouverture, défilement
-  // doux vers la section.
-  const [formOpen, setFormOpen] = useState(false);
-  useEffect(() => {
-    const reveal = () => {
-      if (window.location.hash === "#partager") {
-        setFormOpen(true);
-      }
-    };
-    reveal();
-    window.addEventListener("hashchange", reveal);
-    return () => window.removeEventListener("hashchange", reveal);
-  }, []);
-  useEffect(() => {
-    if (!formOpen) return;
-    requestAnimationFrame(() => {
-      document
-        .getElementById("partager")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, [formOpen]);
-
-  // Après une publication réussie : on laisse le temps de lire la
-  // confirmation, puis la section se referme et la page remonte à la
-  // liste des témoignages où le nouvel avis vient d'apparaître.
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const onCreated = () => {
-      timer = setTimeout(() => {
-        setFormOpen(false);
-        document
-          .getElementById("liste-temoignages")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 2000);
-    };
-    window.addEventListener(TESTIMONIAL_CREATED_EVENT, onCreated);
-    return () => {
-      window.removeEventListener(TESTIMONIAL_CREATED_EVENT, onCreated);
-      if (timer !== undefined) clearTimeout(timer);
-    };
-  }, []);
 
   const list = liveTestimonials ?? testimonials;
   const effectiveTotal = list.length;
@@ -287,39 +245,17 @@ export function TestimonialsPageContent({
               ? "Partagez votre expérience et aidez d'autres voyageurs à découvrir le Bénin avec Wonder Tours and Services."
               : "Share your experience and help other travelers discover Benin with Wonder Tours and Services."}
           </p>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => setFormOpen(true)}
-          >
-            {formOpen
-              ? isFr ? "Écrire mon témoignage" : "Write my testimonial"
-              : isFr ? "Partager mon témoignage" : "Share my testimonial"}
+          <Button variant="primary" size="lg" onClick={() => setIsFormOpen(true)}>
+            {isFr ? "Partager mon témoignage" : "Share my testimonial"}
           </Button>
         </div>
       </section>
 
-      {/* Formulaire public : laisser un témoignage (publication immédiate,
-          modérée a posteriori par l'équipe — suppression / masquage).
-          Masqué tant que le visiteur n'a pas cliqué sur « Partager mon
-          témoignage » (ou arrivé avec #partager dans l'URL). */}
-      {formOpen && (
-        <section id="partager" className="py-20 bg-background scroll-mt-24">
-          <div className="container mx-auto px-4 lg:px-8 max-w-2xl">
-            <SectionHeading
-              title={
-                isFr ? "Laissez-nous votre avis" : "Leave us your review"
-              }
-            />
-            <p className="text-text-secondary text-center mb-8 max-w-xl mx-auto">
-              {isFr
-                ? "Quelques mots sur votre voyage suffisent : votre avis est publié immédiatement sur cette page."
-                : "A few words about your trip are enough: your review is published immediately on this page."}
-            </p>
-            <TestimonialFormPublic />
-          </div>
-        </section>
-      )}
+      {/* Public Testimonial Form Modal */}
+      <PublicTestimonialForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+      />
     </>
   );
 }

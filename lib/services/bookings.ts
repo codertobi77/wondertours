@@ -70,18 +70,31 @@ export async function getBookingWithCircuitById(
 /** Génère une référence unique lisible : WT-XXXXXX (base 36, 6 caractères). */
 async function generateBookingReference(): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const ref = `WT-${crypto
+    // Utiliser timestamp + random pour réduire les collisions
+    const timestamp = Date.now().toString(36).toUpperCase().slice(-4);
+    const random = crypto
       .getRandomValues(new Uint32Array(1))[0]
       .toString(36)
       .toUpperCase()
-      .slice(0, 6)
-      .padStart(6, "0")}`;
+      .slice(0, 2)
+      .padStart(2, "0");
+    const ref = `WT-${timestamp}${random}`;
+
     const existing = await prisma.booking.findUnique({
       where: { bookingReference: ref },
       select: { id: true },
     });
     if (!existing) return ref;
   }
+
+  // Fallback : UUID tronqué si toutes les tentatives échouent
+  const fallbackRef = `WT-${crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()}`;
+  const existing = await prisma.booking.findUnique({
+    where: { bookingReference: fallbackRef },
+    select: { id: true },
+  });
+  if (!existing) return fallbackRef;
+
   throw new Error("Impossible de générer une référence de réservation unique");
 }
 

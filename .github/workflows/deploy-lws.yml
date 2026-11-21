@@ -167,20 +167,55 @@ jobs:
       - name: Installer lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
-      - name: Déployer l'API PHP → api/ (racine FTP = racine du compte)
+      - name: Déployer l'API PHP → api/ + root .htaccess (racine FTP = public_html)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
-          # Credentials trimmés dans la même étape (évite les retours à la ligne
-          # des secrets GitHub et la dépendance au .netrc entre étapes).
-          TH="$(printf '%s' "$FTP_HOST" | tr -d '[:space:]')"
-          TU="$(printf '%s' "$FTP_USER" | tr -d '[:space:]')"
-          TP="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:space:]')"
-          lftp -u "$TU","$TP" "$TH" -e "set ftp:ssl-allow true; set ssl:verify-certificate no; set ftp:ignore-pasv-address yes; set net:timeout 45; set net:max-retries 5; debug 3; mirror -R --delete --parallel=2 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X scripts/* php-api/ api.wondertoursandservices.com/api/; quit"
-        # Inclut php-api/.htaccess (routeur /api/) et config.local.php
-        # (secrets du serveur). Exclus : outils de dev uniquement.
+          
+          # 1. Déployer php-api/ → htdocs/api.wondertoursandservices.com/api/
+          lftp -u "$TU","$TP" "$TH" -e "
+            set ftp:ssl-allow true;
+            set ssl:verify-certificate no;
+            set ftp:ignore-pasv-address yes;
+            set net:timeout 45;
+            set net:max-retries 5;
+            debug 3;
+            mirror -R --delete --parallel=2 --verbose=2 \
+              -X router-dev.php \
+              -X test-connexion.php \
+              -X config.example.php \
+              -X scripts/ \
+              -X scripts/* \
+              php-api/ htdocs/api.wondertoursandservices.com/api/;
+            quit
+          "
+          
+          # 2. Déployer .htaccess racine du sous-domaine → htdocs/api.wondertoursandservices.com/
+          lftp -u "$TU","$TP" "$TH" -e "
+            set ftp:ssl-allow true;
+            set ssl:verify-certificate no;
+            set ftp:ignore-pasv-address yes;
+            set net:timeout 45;
+            set net:max-retries 5;
+            put .htaccess-api-root -o htdocs/api.wondertoursandservices.com/.htaccess;
+            quit
+          "
+          
+          # 3. Fixer permissions config.local.php (600) — uploads/ existe déjà
+          lftp -u "$TU","$TP" "$TH" -e "
+            set ftp:ssl-allow true;
+            set ssl:verify-certificate no;
+            set ftp:ignore-pasv-address yes;
+            set net:timeout 45;
+            set net:max-retries 5;
+            chmod 600 htdocs/api.wondertoursandservices.com/api/config.local.php;
+            quit
+          "
+        # Inclut php-api/.htaccess (routeur /api/) et config.local.php (perms 600)
+        # + .htaccess racine du sous-domaine + dossier uploads/
+        # Exclus : outils de dev uniquement (router-dev.php, test-connexion.php, config.example.php, scripts/)
         # --delete retire côté serveur les fichiers retirés du dépôt.
         # Document root LWS : api.wondertoursandservices.com/ (à la racine FTP)
         # L'API est servie sous https://api.wondertoursandservices.com/api/*

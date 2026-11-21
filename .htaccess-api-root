@@ -1,0 +1,18 @@
+# Wonder Tours API Subdomain Root — htdocs/api.wondertoursandservices.com/
+# Document root pour le sous-domaine api.wondertoursandservices.com
+# L'API PHP est servie sous /api/ (cf. php-api/.htaccess RewriteBase /api/)
+
+Options -Indexes
+DirectoryIndex index.php
+
+RewriteEngine On
+RewriteBase /
+
+# Health check racine
+RewriteRule ^$ /api/index.php [L]
+
+# API routes - passer à l'API PHP
+RewriteRule ^api/(.*)$ /api/$1 [L]
+
+# Tout le reste -> 404 via API
+ErrorDocument 404 /api/index.php

@@ -77,29 +77,6 @@ export function BlogDetailModal({ isOpen, onClose, post }: BlogDetailModalProps)
             {isFr ? "Copier le lien" : "Copy link"}
           </button>
         </div>
-
-        {/* Comments Section */}
-        <div className="mt-12 pt-8 border-t">
-          <h3 className="font-heading text-xl font-bold text-text mb-6">
-            {isFr ? "Laisser un commentaire" : "Leave a comment"}
-          </h3>
-          <form className="space-y-4">
-            <div>
-              <label htmlFor="comment" className="block text-sm font-medium text-text mb-2">
-                {isFr ? "Commentaire" : "Comment"}
-              </label>
-            <textarea
-              id="comment"
-              rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none resize-none"
-              placeholder={isFr ? "Votre commentaire..." : "Your comment..."}
-            />
-            </div>
-            <Button variant="primary" type="submit">
-              {isFr ? "Envoyer le commentaire" : "Submit comment"}
-            </Button>
-          </form>
-        </div>
       </div>
     </Dialog>
   );

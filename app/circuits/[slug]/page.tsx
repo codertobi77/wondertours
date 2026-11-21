@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { getCircuit, getCircuitSlugs } from "@/lib/content";
 import { Clock, MapPin, Check, X } from "lucide-react";
 import { notFound } from "next/navigation";
+import { generateMetadata as generateSeoMetadata } from "@/lib/seo";
+import Image from "next/image";
 import type { Metadata } from "next";
 
 interface CircuitPageProps {
@@ -15,18 +17,8 @@ interface CircuitPageProps {
   }>;
 }
 
-// Export statique : seuls les slugs générés au build existent (une page
-// HTML par circuit) — dynamicParams=false sinon le build échoue.
-export const dynamicParams = false;
-
-export async function generateStaticParams() {
-  const slugs = await getCircuitSlugs();
-  // Export statique : Next refuse un tableau vide (au moins une route
-  // générée). Sentinelle "_" si le contenu est indisponible au build
-  // (CI sans APP_URL, API coupée) : la page rend alors not-found, aucun
-  // contenu fictif n'est pas publié.
-  return slugs.length > 0 ? slugs.map((slug) => ({ slug })) : [{ slug: "_" }];
-}
+// Pour SSR/ISR : dynamicParams=true par défaut, pas de generateStaticParams
+// Les pages sont rendues à la demande avec revalidation
 
 export async function generateMetadata({
   params,
@@ -34,10 +26,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const circuit = await getCircuit(slug);
   if (!circuit) return {};
-  return {
-    title: `${circuit.title} - Wonder Tours and Services`,
+  return generateSeoMetadata({
+    title: circuit.title,
     description: circuit.description || undefined,
-  };
+    path: `/circuits/${slug}`,
+    image: circuit.image,
+  });
 }
 
 export default async function CircuitPage({ params }: CircuitPageProps) {
@@ -55,10 +49,13 @@ export default async function CircuitPage({ params }: CircuitPageProps) {
       <main className="flex-1">
         {/* Hero Gallery */}
         <section className="relative h-[60vh] min-h-[400px]">
-          <img
+          <Image
             src={circuit.image}
             alt={circuit.title}
-            className="h-full w-full object-cover"
+            fill
+            className="object-cover"
+            priority
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 container mx-auto px-4 lg:px-8 pb-12">
@@ -205,12 +202,14 @@ export default async function CircuitPage({ params }: CircuitPageProps) {
               title="Galerie photos"
             />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
-                  <img
-                    src="[PHOTO GALERIE À REMPLACER]"
-                    alt={`${circuit.title} gallery photo ${i}`}
-                    className="h-full w-full object-cover hover:scale-105 transition-transform duration-300"
+              {circuit.gallery?.map((image, index) => (
+                <div key={index} className="aspect-square bg-gray-200 rounded-lg overflow-hidden relative">
+                  <Image
+                    src={image}
+                    alt={`${circuit.title} gallery photo ${index + 1}`}
+                    fill
+                    className="object-cover hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   />
                 </div>
               ))}
@@ -257,10 +256,13 @@ export default async function CircuitPage({ params }: CircuitPageProps) {
         {/* Final CTA */}
         <section className="py-20 bg-primary relative">
           <div className="absolute inset-0">
-            <img
-              src="[PHOTO CTA CIRCUIT À REMPLACER]"
-              alt="Réserver"
-              className="h-full w-full object-cover"
+            <Image
+              src={circuit.image}
+              alt=""
+              fill
+              className="object-cover"
+              priority={false}
+              sizes="100vw"
             />
             <div className="absolute inset-0 bg-primary/90" />
           </div>

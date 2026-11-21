@@ -11,6 +11,7 @@ const publicUserSelect = {
   lastName: true,
   role: true,
   isActive: true,
+  emailVerified: true,
   createdAt: true,
   updatedAt: true,
   lastLoginAt: true,

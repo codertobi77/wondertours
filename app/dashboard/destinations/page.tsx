@@ -36,7 +36,7 @@ export default function DestinationsPage() {
         </Button>
       </div>
 
-      {loading && <LoadingBlock />}
+      {loading && <LoadingBlock variant="table" />}
       {error && <ErrorBlock message={error} />}
 
       {!loading && !error && (

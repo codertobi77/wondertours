@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppButton } from "@/components/common/whatsapp-button";
@@ -31,6 +31,70 @@ export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [csrfToken, setCsrfToken] = useState<string>("");
+
+  // Rate limiting : max 3 soumissions par session (sessionStorage)
+  const RATE_LIMIT_KEY = "contact_form_submissions";
+  const RATE_LIMIT_MAX = 3;
+
+  function checkRateLimit(): boolean {
+    if (typeof window === "undefined") return true;
+    const count = parseInt(sessionStorage.getItem(RATE_LIMIT_KEY) ?? "0", 10);
+    return count < RATE_LIMIT_MAX;
+  }
+
+  function incrementRateLimit(): void {
+    if (typeof window === "undefined") return;
+    const count = parseInt(sessionStorage.getItem(RATE_LIMIT_KEY) ?? "0", 10);
+    sessionStorage.setItem(RATE_LIMIT_KEY, String(count + 1));
+  }
+
+  // Validation côté client
+  function validateForm(): boolean {
+    const errors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      errors.name = isFr ? "Le nom est requis" : "Name is required";
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = isFr ? "L'email est requis" : "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = isFr ? "Format d'email invalide" : "Invalid email format";
+    }
+
+    if (!formData.phone.trim()) {
+      errors.phone = isFr ? "Le téléphone est requis" : "Phone is required";
+    } else if (!/^[\d\s\-\+\(\)]{8,}$/.test(formData.phone)) {
+      errors.phone = isFr ? "Format de téléphone invalide" : "Invalid phone format";
+    }
+
+    if (!formData.subject.trim()) {
+      errors.subject = isFr ? "L'objet est requis" : "Subject is required";
+    }
+
+    if (!formData.requestType) {
+      errors.requestType = isFr ? "Le type de demande est requis" : "Request type is required";
+    }
+
+    if (!formData.message.trim()) {
+      errors.message = isFr ? "Le message est requis" : "Message is required";
+    } else if (formData.message.trim().length < 10) {
+      errors.message = isFr ? "Le message doit contenir au moins 10 caractères" : "Message must be at least 10 characters";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  // Récupérer le token CSRF au montage
+  useEffect(() => {
+    fetch("/api/csrf-token")
+      .then((res) => res.json())
+      .then((data) => data.token && setCsrfToken(data.token))
+      .catch(() => {});
+  }, []);
 
   // URL de la carte : constante statique (SITE_CONFIG, lib/constants.ts).
   // L'ancienne route /api/settings (lecture FS non persistante) a été
@@ -40,13 +104,32 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation côté client
+    if (!validateForm()) {
+      return;
+    }
+
+    // Vérification rate limiting côté client
+    if (!checkRateLimit()) {
+      setErrorMessage(
+        isFr
+          ? "Trop de tentatives. Veuillez attendre avant de renvoyer le formulaire."
+          : "Too many attempts. Please wait before resubmitting."
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage(null);
 
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
@@ -76,6 +159,7 @@ export default function ContactPage() {
       }
 
       setIsSubmitted(true);
+      incrementRateLimit();
     } catch {
       setErrorMessage(
         isFr
@@ -199,6 +283,7 @@ export default function ContactPage() {
                     label={isFr ? "Nom complet" : "Full name"}
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    error={fieldErrors.name}
                     required
                   />
                   
@@ -207,6 +292,7 @@ export default function ContactPage() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    error={fieldErrors.email}
                     required
                   />
                   
@@ -215,6 +301,7 @@ export default function ContactPage() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    error={fieldErrors.phone}
                     required
                   />
                   
@@ -222,6 +309,7 @@ export default function ContactPage() {
                     label={isFr ? "Objet" : "Subject"}
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    error={fieldErrors.subject}
                     required
                   />
                   
@@ -237,6 +325,7 @@ export default function ContactPage() {
                     ]}
                     value={formData.requestType}
                     onChange={(e) => setFormData({ ...formData, requestType: e.target.value })}
+                    error={fieldErrors.requestType}
                     required
                   />
                   
@@ -265,6 +354,7 @@ export default function ContactPage() {
                         ? "Décrivez votre projet de voyage, vos questions ou vos demandes spécifiques..."
                         : "Describe your travel project, your questions or your specific requests..."
                     }
+                    error={fieldErrors.message}
                     required
                   />
                   

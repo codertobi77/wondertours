@@ -1,14 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { TableSkeleton, CardSkeleton, PageSkeleton } from "@/components/ui/skeleton";
 
 /** Blocs d'état partagés des pages dashboard client (chargement, erreur, 404). */
 
-export function LoadingBlock() {
-  return (
-    <p className="text-gray-500 py-16 text-center" role="status">
-      Chargement…
-    </p>
-  );
+export function LoadingBlock({ variant = "page" }: { variant?: "page" | "table" | "card" }) {
+  switch (variant) {
+    case "table":
+      return <TableSkeleton rows={6} columns={7} />;
+    case "card":
+      return <CardSkeleton />;
+    default:
+      return <PageSkeleton />;
+  }
 }
 
 export function ErrorBlock({ message }: { message: string }) {

@@ -228,7 +228,7 @@ final class PublicApi
         );
     }
 
-    /** GET /api/testimonials — actifs, filtre featured, q sur nom/texte, tri featured puis date. */
+    /** GET /api/testimonials — actifs ET vérifiés, filtre featured, q sur nom/texte, tri featured puis date. */
     public static function testimonials(): never
     {
         $v = Validator::query();
@@ -238,7 +238,7 @@ final class PublicApi
         $featured = $v->boolQuery('featured');
         $v->fail();
 
-        $where = ['t.is_active = true'];
+        $where = ['t.is_active = true', 't.is_verified = true'];
         $params = [];
         if ($featured !== null) {
             $where[] = $featured ? 't.is_featured = true' : 't.is_featured = false';
@@ -348,6 +348,7 @@ final class PublicApi
         ]);
 
         Http::created(['message' => 'Témoignage envoyé avec succès', 'id' => $id]);
+    }
     }
 
     private static function blogJoins(): string

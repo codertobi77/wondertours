@@ -11,6 +11,7 @@ import {
   MediaAltTextEditor,
 } from "@/components/dashboard/media-actions";
 import { formatDate, formatFileSize } from "@/lib/format";
+import Image from "next/image";
 import type { ApiMediaFile, ApiPage } from "@/lib/api-types";
 
 export default function MediaPage() {
@@ -33,7 +34,7 @@ export default function MediaPage() {
         </p>
       </div>
 
-      {loading && <LoadingBlock />}
+      {loading && <LoadingBlock variant="table" />}
       {error && <ErrorBlock message={error} />}
 
       {!loading && !error && (
@@ -58,12 +59,13 @@ export default function MediaPage() {
               {files.map((file) => (
                 <Card key={file.id}>
                   <CardContent className="p-4">
-                    <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                    <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden flex items-center justify-center relative">
+                      <Image
                         src={file.url}
                         alt={file.altText ?? file.filename}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        sizes="200px"
                       />
                     </div>
                     <div className="space-y-1">

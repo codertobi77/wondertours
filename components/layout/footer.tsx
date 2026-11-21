@@ -6,60 +6,79 @@ import { Mail, Phone, MapPin } from "lucide-react";
 import { NAVIGATION, SERVICES, SITE_CONFIG } from "@/lib/constants";
 import { useLanguage } from "@/contexts/language-context";
 
-interface FooterSettings {
-  site_name?: string | null;
-  site_description?: string | null;
-  contact_email?: string | null;
-  contact_phone?: string | null;
-  contact_address?: string | null;
-  social_facebook?: string | null;
-  social_instagram?: string | null;
-  social_youtube?: string | null;
+interface FooterData {
+  siteName: string;
+  siteDescription: string;
+  contactEmail: string;
+  contactPhone: string;
+  contactAddress: string;
+  socialFacebook: string;
+  socialInstagram: string;
+  socialYoutube: string;
+  whatsappNumber: string;
+  founderBioFr: string;
+  founderBioEn: string;
+  founderName: string;
+  founderTitle: string;
+  mapEmbedUrl: string;
 }
 
 export function Footer() {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
 
-  const [settings, setSettings] = useState<FooterSettings>({});
+  const [data, setData] = useState<FooterData>({
+    siteName: SITE_CONFIG.name,
+    siteDescription: isFr ? SITE_CONFIG.description : SITE_CONFIG.descriptionEn,
+    contactEmail: SITE_CONFIG.contact.email,
+    contactPhone: SITE_CONFIG.contact.phone,
+    contactAddress: SITE_CONFIG.contact.address,
+    socialFacebook: SITE_CONFIG.links.facebook,
+    socialInstagram: SITE_CONFIG.links.instagram,
+    socialYoutube: SITE_CONFIG.links.youtube,
+    whatsappNumber: SITE_CONFIG.links.whatsapp,
+    founderBioFr: "",
+    founderBioEn: "",
+    founderName: SITE_CONFIG.founder.name,
+    founderTitle: SITE_CONFIG.founder.title,
+    mapEmbedUrl: SITE_CONFIG.map.embedUrl,
+  });
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/settings")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        const items = Array.isArray(data.items) ? data.items : [];
-        const map: FooterSettings = {};
+      .then((result) => {
+        if (cancelled || !result) return;
+        const items = Array.isArray(result.items) ? result.items : [];
+        const map: Record<string, string> = {};
         for (const item of items) {
-          if (item && typeof item.key === "string") {
-            (map as Record<string, string | null>)[item.key] = item.value ?? null;
+          if (item && typeof item.key === "string" && item.value !== null) {
+            map[item.key] = item.value;
           }
         }
-        setSettings(map);
+        setData((prev) => ({
+          ...prev,
+          siteName: map.site_name ?? prev.siteName,
+          siteDescription: map.site_description ?? prev.siteDescription,
+          contactEmail: map.contact_email ?? prev.contactEmail,
+          contactPhone: map.contact_phone ?? prev.contactPhone,
+          contactAddress: map.contact_address ?? prev.contactAddress,
+          socialFacebook: map.social_facebook ?? prev.socialFacebook,
+          socialInstagram: map.social_instagram ?? prev.socialInstagram,
+          socialYoutube: map.social_youtube ?? prev.socialYoutube,
+          whatsappNumber: map.whatsapp_number ?? prev.whatsappNumber,
+          founderBioFr: map.founder_bio_fr ?? prev.founderBioFr,
+          founderBioEn: map.founder_bio_en ?? prev.founderBioEn,
+        }));
       })
       .catch(() => {
-        // dégradation gracieuse : on garde les valeurs statiques
+        // graceful degradation: keep static values
       });
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const str = (v: string | null | undefined, fallback: string) =>
-    (v ?? "").trim() || fallback;
-
-  const siteName = str(settings.site_name, SITE_CONFIG.name);
-  const description = str(
-    settings.site_description,
-    isFr ? SITE_CONFIG.description : SITE_CONFIG.descriptionEn
-  );
-  const address = str(settings.contact_address, SITE_CONFIG.contact.address);
-  const phone = str(settings.contact_phone, SITE_CONFIG.contact.phone);
-  const email = str(settings.contact_email, SITE_CONFIG.contact.email);
-  const facebook = str(settings.social_facebook, SITE_CONFIG.links.facebook);
-  const instagram = str(settings.social_instagram, SITE_CONFIG.links.instagram);
-  const youtube = str(settings.social_youtube, SITE_CONFIG.links.youtube);
+  }, [isFr]);
 
   return (
     <footer className="bg-white text-text">
@@ -70,16 +89,16 @@ export function Footer() {
             <div className="flex items-center">
               <img
                 src="/Logo_wonder_origine.png"
-                alt={siteName}
+                alt={data.siteName}
                 className="h-20 w-auto"
               />
             </div>
             <p className="text-text-secondary text-sm leading-relaxed">
-              {description}
+              {data.siteDescription}
             </p>
             <div className="flex space-x-4">
               <a
-                href={facebook}
+                href={data.socialFacebook}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-secondary hover:text-text transition-colors"
@@ -90,18 +109,18 @@ export function Footer() {
                 </svg>
               </a>
               <a
-                href={instagram}
+                href={data.socialInstagram}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-secondary hover:text-text transition-colors"
                 aria-label="Instagram"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                 </svg>
               </a>
               <a
-                href={youtube}
+                href={data.socialYoutube}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-secondary hover:text-text transition-colors"
@@ -127,7 +146,7 @@ export function Footer() {
                     {isFr ? item.name : item.nameEn}
                   </Link>
                 </li>
-              ))} 
+              ))}
             </ul>
           </div>
 
@@ -154,24 +173,24 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start space-x-3 text-text-secondary text-sm">
                 <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>{address}</span>
+                <span>{data.contactAddress}</span>
               </li>
               <li className="flex items-center space-x-3 text-text-secondary text-sm">
                 <Phone className="w-5 h-5 flex-shrink-0" />
                 <a
-                  href={`tel:${phone}`}
+                  href={`tel:${data.contactPhone}`}
                   className="hover:text-text transition-colors"
                 >
-                  {phone}
+                  {data.contactPhone}
                 </a>
               </li>
               <li className="flex items-center space-x-3 text-text-secondary text-sm">
                 <Mail className="w-5 h-5 flex-shrink-0" />
                 <a
-                  href={`mailto:${email}`}
+                  href={`mailto:${data.contactEmail}`}
                   className="hover:text-text transition-colors"
                 >
-                  {email}
+                  {data.contactEmail}
                 </a>
               </li>
             </ul>
@@ -181,7 +200,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-gray-300 mt-8 md:mt-12 pt-6 md:pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-text-secondary text-sm text-center md:text-left">
-            © {new Date().getFullYear()} {siteName}.{" "}
+            © {new Date().getFullYear()} {data.siteName}.{" "}
             {isFr ? "Tous droits réservés." : "All rights reserved."}
           </p>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6 text-sm text-center">

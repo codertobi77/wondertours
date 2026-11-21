@@ -31,7 +31,7 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
-      {loading && <LoadingBlock />}
+      {loading && <LoadingBlock variant="table" />}
       {error && <ErrorBlock message={error} />}
 
       {!loading && !error && (

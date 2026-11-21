@@ -47,14 +47,15 @@ date_default_timezone_set(Env::get('timezone') ?? 'UTC');
 // ─────────────────────────────── Routes ───────────────────────────────
 
 // Public — Phase A : circuits. Phase B : destinations, categories,
-// services, témoignages, blog (+ compteur de vues), POST contact, POST bookings.
-Router::get('/api/circuits', [PublicApi::class, 'circuits']);
-Router::get('/api/circuits/{slug}', [PublicApi::class, 'circuitBySlug']);
-Router::get('/api/destinations', [PublicApi::class, 'destinations']);
-Router::get('/api/categories', [PublicApi::class, 'categories']);
-Router::get('/api/services', [PublicApi::class, 'services']);
-Router::get('/api/testimonials', [PublicApi::class, 'testimonials']);
-Router::get('/api/blog', [PublicApi::class, 'blog']);
+    // services, témoignages, blog (+ compteur de vues), POST contact, POST bookings.
+    Router::get('/api/circuits', [PublicApi::class, 'circuits']);
+    Router::get('/api/circuits/{slug}', [PublicApi::class, 'circuitBySlug']);
+    Router::get('/api/destinations', [PublicApi::class, 'destinations']);
+    Router::get('/api/categories', [PublicApi::class, 'categories']);
+    Router::get('/api/services', [PublicApi::class, 'services']);
+    Router::get('/api/testimonials', [PublicApi::class, 'testimonials']);
+    Router::post('/api/testimonials', [PublicApi::class, 'createTestimonial']);
+    Router::get('/api/blog', [PublicApi::class, 'blog']);
 Router::get('/api/blog/{slug}', [PublicApi::class, 'blogBySlug']);
 Router::get('/api/blog-categories', [PublicApi::class, 'blogCategories']);
 Router::get('/api/settings', [PublicApi::class, 'settings']);
