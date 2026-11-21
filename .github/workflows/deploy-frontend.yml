@@ -55,8 +55,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Nécessaire au postinstall (bun install → prisma generate) qui lit
-      // DATABASE_URL. Prisma Generate ne se connecte pas à la base, une
-      // valeur factice suffit ; le build statique ne requiert pas de base.
+      # DATABASE_URL. Prisma Generate ne se connecte pas à la base, une
+      # valeur factice suffit ; le build statique ne requiert pas de base.
       DATABASE_URL: "postgresql://wondertours:wondertours@localhost:5432/wondertours_test"
     steps:
       - uses: actions/checkout@v4
