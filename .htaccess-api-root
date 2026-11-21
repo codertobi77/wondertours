@@ -2,8 +2,7 @@
 # Document root pour le sous-domaine api.wondertoursandservices.com
 # L'API PHP est servie sous /api/ (cf. php-api/.htaccess RewriteBase /api/)
 
-Options -Indexes
-DirectoryIndex index.php
+DirectoryIndex /api/index.php
 
 RewriteEngine On
 RewriteBase /
