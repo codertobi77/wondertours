@@ -94,7 +94,7 @@ jobs:
             workflow_run)
               # Fichiers modifiés par le push sur master qui a déclenché la CI.
               if git diff --name-only HEAD~1 HEAD \
-                 | grep -Eq '^(php-api/|prisma/|render\.yaml|scripts/smoke-api\.sh|php-api/scripts/gen-config-local\.php|.htaccess-api-root|\.github/workflows/deploy-lws\.yml)'; then
+                 | grep -Eq '^(php-api/|prisma/|render\.yaml|scripts/smoke-api\.sh|php-api/scripts/gen-config-local\.php|.htaccess-api-root|php-api/root-index.php|\.github/workflows/deploy-lws\.yml)'; then
                 echo "Changements backend détectés — déploiement de l'API."
                 echo "changed=true" >> "$GITHUB_OUTPUT"
               else
@@ -199,6 +199,7 @@ jobs:
             printf '%s\n' ""
             printf '%s\n' "# 2. Déployer le .htaccess"
             printf '%s\n' "put .htaccess-api-root -o htdocs/api.wondertoursandservices.com/.htaccess"
+            printf '%s\n' "put php-api/root-index.php -o htdocs/api.wondertoursandservices.com/index.php"
             printf '%s\n' ""
             printf '%s\n' "# 3. Modifier les permissions"
             printf '%s\n' "chmod 600 htdocs/api.wondertoursandservices.com/api/config.local.php"
