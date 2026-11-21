@@ -20,12 +20,16 @@ export default function VerifyEmailPage() {
     const token = params.get("token");
 
     if (!token) {
-      setStatus("error");
-      setMessage(
-        isFr
-          ? "Jeton de vérification manquant. Veuillez vérifier le lien dans votre email."
-          : "Verification token missing. Please check the link in your email."
-      );
+      // Mise à jour différée pour éviter un setState synchrone dans l'effet
+      // (rendu en cascade, interdit par react-hooks/set-state-in-effect).
+      setTimeout(() => {
+        setStatus("error");
+        setMessage(
+          isFr
+            ? "Jeton de vérification manquant. Veuillez vérifier le lien dans votre email."
+            : "Verification token missing. Please check the link in your email."
+        );
+      }, 0);
       return;
     }
 
