@@ -349,7 +349,6 @@ final class PublicApi
 
         Http::created(['message' => 'Témoignage envoyé avec succès', 'id' => $id]);
     }
-    }
 
     private static function blogJoins(): string
     {
