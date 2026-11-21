@@ -204,7 +204,7 @@ jobs:
             printf '%s\n' "chmod 600 htdocs/api.wondertoursandservices.com/api/config.local.php"
             printf '%s\n' ""
             printf '%s\n' "quit"
-          } | lftp -u "$TU","$TP" "$TH" -f -
+          } | lftp -u "$TU","$TP" "$TH"
         # --delete retire côté serveur les fichiers retirés du dépôt.
         # Document root LWS : api.wondertoursandservices.com/ (à la racine FTP)
         # L'API est servie sous https://api.wondertoursandservices.com/api/*
