@@ -94,7 +94,7 @@ jobs:
             workflow_run)
               # Fichiers modifiés par le push sur master qui a déclenché la CI.
               if git diff --name-only HEAD~1 HEAD \
-                 | grep -Eq '^(php-api/|prisma/|render\.yaml|scripts/smoke-api\.sh|php-api/scripts/gen-config-local\.php|.htaccess-api-root|deploy-root/|\.github/workflows/deploy-lws\.yml)'; then
+                 | grep -Eq '^(php-api/|prisma/|render\.yaml|scripts/smoke-api\.sh|php-api/scripts/gen-config-local\.php|.htaccess-api-root|\.github/workflows/deploy-lws\.yml)'; then
                 echo "Changements backend détectés — déploiement de l'API."
                 echo "changed=true" >> "$GITHUB_OUTPUT"
               else
@@ -167,12 +167,9 @@ jobs:
       - name: Installer lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
-      - name: Installer lftp
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
-
       # Connexion FTP LWS unique : vérifie la connexion, déploie l'API, le
       # .htaccess racine et fixe les permissions dans la même session.
-      - name: Déployer l'API PHP → api/ + root .htaccess (racine FTP = public_html)
+      - name: Déployer l'API PHP → api/ (racine FTP = public_html)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -196,14 +193,9 @@ jobs:
             printf '%s\n' ""
             printf '%s\n' "# 1. Déployer l'API"
             printf '%s\n' "mirror -R --delete --parallel=1 --verbose=2 -X router-dev.php -X test-connexion.php -X config.example.php -X scripts/ -X 'scripts/*' php-api/ htdocs/api.wondertoursandservices.com/api/"
-            printf '%s\n' ""
-            printf '%s\n' "# 2. Déployer le .htaccess"
-            printf '%s\n' "mirror -R --parallel=1 --verbose=2 deploy-root/ htdocs/api.wondertoursandservices.com/"
-            printf '%s\n' ""
-            printf '%s\n' "# 3. Modifier les permissions"
             printf '%s\n' "chmod 600 htdocs/api.wondertoursandservices.com/api/config.local.php || true"
-            printf '%s\n' ""
             printf '%s\n' "quit"
+
           } | lftp -u "$TU","$TP" "$TH"
         # --delete retire côté serveur les fichiers retirés du dépôt.
         # Document root LWS : api.wondertoursandservices.com/ (à la racine FTP)
