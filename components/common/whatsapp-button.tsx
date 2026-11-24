@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -7,9 +10,36 @@ interface WhatsAppButtonProps {
 }
 
 export function WhatsAppButton({ className }: WhatsAppButtonProps) {
+  const [href, setHref] = useState<string>(SITE_CONFIG.links.whatsapp);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((result) => {
+        if (cancelled || !result) return;
+        const items = Array.isArray(result.items) ? result.items : [];
+        const map: Record<string, string> = {};
+        for (const item of items) {
+          if (item && typeof item.key === "string" && item.value !== null) {
+            map[item.key] = item.value;
+          }
+        }
+        if (map.whatsapp_number) {
+          setHref(map.whatsapp_number);
+        }
+      })
+      .catch(() => {
+        // graceful degradation: keep static value
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <a
-      href={SITE_CONFIG.links.whatsapp}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(

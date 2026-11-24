@@ -33,6 +33,11 @@ export default function ContactPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [csrfToken, setCsrfToken] = useState<string>("");
+  const [whatsappHref, setWhatsappHref] = useState<string>(SITE_CONFIG.links.whatsapp);
+  const [contactEmail, setContactEmail] = useState<string>(SITE_CONFIG.contact.email);
+  const [contactPhone, setContactPhone] = useState<string>(SITE_CONFIG.contact.phone);
+  const [contactAddress, setContactAddress] = useState<string>(SITE_CONFIG.contact.address);
+  const mapEmbedUrl = SITE_CONFIG.map.embedUrl;
 
   // Rate limiting : max 3 soumissions par session (sessionStorage)
   const RATE_LIMIT_KEY = "contact_form_submissions";
@@ -96,11 +101,37 @@ export default function ContactPage() {
       .catch(() => {});
   }, []);
 
+  // Récupérer le numéro WhatsApp depuis la base (settings)
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((result) => {
+        if (cancelled || !result) return;
+        const items = Array.isArray(result.items) ? result.items : [];
+        const map: Record<string, string> = {};
+        for (const item of items) {
+          if (item && typeof item.key === "string" && item.value !== null) {
+            map[item.key] = item.value;
+          }
+        }
+        if (map.whatsapp_number) setWhatsappHref(map.whatsapp_number);
+        if (map.contact_email) setContactEmail(map.contact_email);
+        if (map.contact_phone) setContactPhone(map.contact_phone);
+        if (map.contact_address) setContactAddress(map.contact_address);
+        // map_embed_url not in settings, keep static value
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // URL de la carte : constante statique (SITE_CONFIG, lib/constants.ts).
   // L'ancienne route /api/settings (lecture FS non persistante) a été
   // supprimée — la gestion dynamique passe par /api/dashboard/settings
   // (table `settings`).
-  const mapEmbedUrl = SITE_CONFIG.map.embedUrl;
+  // mapEmbedUrl from SITE_CONFIG (static)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,7 +251,7 @@ export default function ContactPage() {
           ctaHref="#form"
           secondaryCtaFr="WhatsApp"
           secondaryCtaEn="WhatsApp"
-          secondaryCtaHref={SITE_CONFIG.links.whatsapp}
+          secondaryCtaHref={whatsappHref}
           image="/photos_site wonder_tours/IMG-20250116-WA0020.jpg"
         />
 
@@ -233,7 +264,7 @@ export default function ContactPage() {
                   <MapPin className="w-8 h-8 text-primary" />
                 </div>
                 <h3 className="font-heading text-xl font-bold text-text mb-2">{isFr ? "Adresse" : "Address"}</h3>
-                <p className="text-text-secondary">{SITE_CONFIG.contact.address}</p>
+                <p className="text-text-secondary">{contactAddress}</p>
               </div>
               <div className="text-center">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -241,10 +272,10 @@ export default function ContactPage() {
                 </div>
                 <h3 className="font-heading text-xl font-bold text-text mb-2">{isFr ? "Téléphone" : "Phone"}</h3>
                 <a
-                  href={`tel:${SITE_CONFIG.contact.phone}`}
+                  href={`tel:${contactPhone}`}
                   className="text-text-secondary hover:text-primary transition-colors"
                 >
-                  {SITE_CONFIG.contact.phone}
+                  {contactPhone}
                 </a>
               </div>
               <div className="text-center">
@@ -253,10 +284,10 @@ export default function ContactPage() {
                 </div>
                 <h3 className="font-heading text-xl font-bold text-text mb-2">Email</h3>
                 <a
-                  href={`mailto:${SITE_CONFIG.contact.email}`}
+                  href={`mailto:${contactEmail}`}
                   className="text-text-secondary hover:text-primary transition-colors"
                 >
-                  {SITE_CONFIG.contact.email}
+                  {contactEmail}
                 </a>
               </div>
             </div>
@@ -410,7 +441,7 @@ export default function ContactPage() {
                           : "Contact us directly on WhatsApp for a quick response."}
                       </p>
                       <a
-                        href={SITE_CONFIG.links.whatsapp}
+                        href={whatsappHref}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-full font-medium hover:bg-green-700 transition-colors"
