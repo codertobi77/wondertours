@@ -64,7 +64,10 @@ export default function LoginPage() {
             // stockage indisponible — le cookie httpOnly de l'API suffira s'il est conservé
           }
         }
-        router.replace("/dashboard");
+        // Navigation complète (pas client-side) pour que le middleware
+        // et le navigateur envoient bien les cookies wt_session/wt_auth
+        // posés ci-dessus avec la requête /dashboard.
+        window.location.href = "/dashboard";
         return;
       }
       const data = (await response.json().catch(() => null)) as {

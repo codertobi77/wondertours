@@ -45,6 +45,7 @@ export async function apiFetch<T>(
   const response = await fetch(path, {
     credentials: "include",
     ...init,
+    cache: "no-store",
     headers: {
       ...authHeader(),
       ...(init?.headers as Record<string, string> | undefined),
