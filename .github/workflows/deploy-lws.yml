@@ -17,7 +17,7 @@
 #
 # Secrets requis (Settings → Secrets and variables → Actions) :
 #   FTP_HOST, FTP_USER, FTP_PASSWORD   accès FTP cPanel LWS
-#   DATABASE_URL                       PostgreSQL Aiven (sslmode=require)
+#   DATABASE_URL                       MySQL LWS Perso (mysql://user:pass@host:3306/db)
 #   AUTH_SECRET                        secret JWT (identique à Vercel — sessions compatibles)
 #   APP_URL                            https://wondertoursandservices.com
 #   ADMIN_EMAIL, ADMIN_PASSWORD        compte admin (smoke + login)
@@ -153,11 +153,6 @@ jobs:
 
       - name: Générer le client Prisma
         run: bun run db:generate
-
-      - name: Appliquer les migrations (prisma migrate deploy) sur Aiven
-        run: bun run db:deploy
-        # Toujours en premier : le schéma Aiven est migré avant que le
-        # nouveau code ne soit uploadé (l'API PHP sert ce même schéma).
 
       - name: Générer php-api/config.local.php depuis les secrets
         run: php php-api/scripts/gen-config-local.php
