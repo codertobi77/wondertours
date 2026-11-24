@@ -46,8 +46,8 @@ export async function listMediaFiles(
     ...(filters.mimeType && { mimeType: filters.mimeType }),
     ...(filters.q && {
       OR: [
-        { filename: { contains: filters.q, mode: "insensitive" } },
-        { altText: { contains: filters.q, mode: "insensitive" } },
+        { filename: { contains: filters.q } },
+        { altText: { contains: filters.q } },
       ],
     }),
   };

@@ -31,10 +31,10 @@ export async function listBookings(
     ...(filters.q && {
       OR: [
         {
-          customerName: { contains: filters.q, mode: "insensitive" },
+          customerName: { contains: filters.q },
         },
-        { customerEmail: { contains: filters.q, mode: "insensitive" } },
-        { bookingReference: { contains: filters.q, mode: "insensitive" } },
+        { customerEmail: { contains: filters.q } },
+        { bookingReference: { contains: filters.q } },
       ],
     }),
   };

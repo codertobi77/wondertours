@@ -22,8 +22,8 @@ export async function listTestimonials(
     ...(filters.circuitId && { circuitId: filters.circuitId }),
     ...(filters.q && {
       OR: [
-        { name: { contains: filters.q, mode: "insensitive" } },
-        { text: { contains: filters.q, mode: "insensitive" } },
+        { name: { contains: filters.q } },
+        { text: { contains: filters.q } },
       ],
     }),
   };

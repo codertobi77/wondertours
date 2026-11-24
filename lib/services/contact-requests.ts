@@ -26,9 +26,9 @@ export async function listContactRequests(
     ...(filters.requestType && { requestType: filters.requestType }),
     ...(filters.q && {
       OR: [
-        { name: { contains: filters.q, mode: "insensitive" } },
-        { email: { contains: filters.q, mode: "insensitive" } },
-        { subject: { contains: filters.q, mode: "insensitive" } },
+        { name: { contains: filters.q } },
+        { email: { contains: filters.q } },
+        { subject: { contains: filters.q } },
       ],
     }),
   };

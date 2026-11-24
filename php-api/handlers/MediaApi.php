@@ -56,7 +56,7 @@ final class MediaApi
         $where = [];
         $params = [];
         if ($q !== null) {
-            $where[] = '(t.filename ILIKE ? OR t.alt_text ILIKE ?)';
+            $where[] = '(t.filename LIKE ? OR t.alt_text LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
         }
@@ -143,12 +143,13 @@ final class MediaApi
             $storagePath = $destPath;
         }
 
-        $row = Db::one(
+        $mediaId = Db::uuid();
+        Db::run(
             'INSERT INTO ' . self::TABLE
             . ' (id, filename, storage_path, url, mime_type, size, width, height, alt_text, alt_text_en, uploaded_by, created_at)'
-            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
-                Db::uuid(),
+                $mediaId,
                 (string) $file['name'],
                 $storagePath,
                 $url,
@@ -162,6 +163,7 @@ final class MediaApi
                 Support::now(),
             ]
         );
+        $row = Db::one('SELECT * FROM ' . self::TABLE . ' WHERE id = ?', [$mediaId]);
         Http::created(Serial::mediaFile($row));
     }
 
@@ -191,12 +193,12 @@ final class MediaApi
         }
         // media_library n'a pas de colonne @updatedAt ; un corps sans champ
         // renvoie simplement la ligne courante (update Prisma à data vide).
-        $row = $set === []
-            ? Db::one('SELECT * FROM ' . self::TABLE . ' WHERE id = ?', [$id])
-            : Db::one(
-                'UPDATE ' . self::TABLE . ' SET ' . implode(', ', $set) . ' WHERE id = ? RETURNING *',
-                [...$params, $id]
-            );
+        if ($set === []) {
+            $row = Db::one('SELECT * FROM ' . self::TABLE . ' WHERE id = ?', [$id]);
+        } else {
+            Db::run('UPDATE ' . self::TABLE . ' SET ' . implode(', ', $set) . ' WHERE id = ?', [...$params, $id]);
+            $row = Db::one('SELECT * FROM ' . self::TABLE . ' WHERE id = ?', [$id]);
+        }
         if ($row === null) {
             Http::notFound(); // P2025
         }

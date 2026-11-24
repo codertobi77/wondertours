@@ -18,8 +18,8 @@ export async function listServices(
     ...(filters.active !== undefined && { isActive: filters.active }),
     ...(filters.q && {
       OR: [
-        { title: { contains: filters.q, mode: "insensitive" } },
-        { description: { contains: filters.q, mode: "insensitive" } },
+        { title: { contains: filters.q } },
+        { description: { contains: filters.q } },
       ],
     }),
   };

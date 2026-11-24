@@ -41,9 +41,9 @@ export async function listUsers(
     ...(filters.active !== undefined && { isActive: filters.active }),
     ...(filters.q && {
       OR: [
-        { email: { contains: filters.q, mode: "insensitive" } },
-        { firstName: { contains: filters.q, mode: "insensitive" } },
-        { lastName: { contains: filters.q, mode: "insensitive" } },
+        { email: { contains: filters.q } },
+        { firstName: { contains: filters.q } },
+        { lastName: { contains: filters.q } },
       ],
     }),
   };

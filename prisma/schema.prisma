@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
 }
 
 // ─────────────────────────────── Enums ───────────────────────────────
@@ -55,7 +55,7 @@ enum ContactRequestStatus {
 // ─────────────────────────────── Utilisateurs ───────────────────────────────
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
+  id           String    @id @default(uuid()) @db.Char(36)
   email        String    @unique @db.VarChar(255)
   passwordHash String    @map("password_hash") @db.VarChar(255)
   firstName    String    @map("first_name") @db.VarChar(100)
@@ -81,8 +81,8 @@ model User {
 // Token de réinitialisation « mot de passe oublié » : seul le hash SHA-256
 // du token est stocké (jamais le token brut), à usage unique et expirant.
 model PasswordResetToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
   tokenHash String    @unique @map("token_hash") @db.VarChar(255)
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
@@ -98,7 +98,7 @@ model PasswordResetToken {
 // ─────────────────────────────── Contenu ───────────────────────────────
 
 model Destination {
-  id             String   @id @default(uuid()) @db.Uuid
+  id             String   @id @default(uuid()) @db.Char(36)
   name           String   @db.VarChar(100)
   nameEn         String?  @map("name_en") @db.VarChar(100)
   slug           String   @unique @db.VarChar(100)
@@ -120,7 +120,7 @@ model Destination {
 }
 
 model Category {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String   @id @default(uuid()) @db.Char(36)
   name          String   @db.VarChar(100)
   nameEn        String?  @map("name_en") @db.VarChar(100)
   slug          String   @unique @db.VarChar(100)
@@ -140,7 +140,7 @@ model Category {
 }
 
 model Circuit {
-  id              String      @id @default(uuid()) @db.Uuid
+  id              String      @id @default(uuid()) @db.Char(36)
   slug            String      @unique @db.VarChar(255)
   title           String      @db.VarChar(255)
   titleEn         String?     @map("title_en") @db.VarChar(255)
@@ -148,7 +148,7 @@ model Circuit {
   subtitleEn      String?     @map("subtitle_en") @db.Text
   description     String?     @db.Text
   descriptionEn   String?     @map("description_en") @db.Text
-  destinationId   String?     @map("destination_id") @db.Uuid
+  destinationId   String?     @map("destination_id") @db.Char(36)
   durationDays    Int?        @map("duration_days")
   durationNights  Int?        @map("duration_nights")
   price           Decimal     @db.Decimal(10, 2)
@@ -170,7 +170,7 @@ model Circuit {
   isActive        Boolean     @default(true) @map("is_active")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at")
-  createdBy       String?     @map("created_by") @db.Uuid
+  createdBy       String?     @map("created_by") @db.Char(36)
 
   destination  Destination?  @relation(fields: [destinationId], references: [id], onDelete: SetNull)
   categories   Category[]
@@ -186,13 +186,13 @@ model Circuit {
 }
 
 model Testimonial {
-  id         String    @id @default(uuid()) @db.Uuid
+  id         String    @id @default(uuid()) @db.Char(36)
   name       String    @db.VarChar(100)
   country    String?   @db.VarChar(100)
   rating     Int       @db.SmallInt
   text       String    @db.Text
   textEn     String?   @map("text_en") @db.Text
-  circuitId  String?   @map("circuit_id") @db.Uuid
+  circuitId  String?   @map("circuit_id") @db.Char(36)
   avatarUrl  String?   @map("avatar_url") @db.VarChar(500)
   date       DateTime? @db.Date
   isVerified Boolean   @default(false) @map("is_verified")
@@ -212,7 +212,7 @@ model Testimonial {
 // ─────────────────────────────── Blog ───────────────────────────────
 
 model BlogCategory {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String   @id @default(uuid()) @db.Char(36)
   name          String   @db.VarChar(100)
   nameEn        String?  @map("name_en") @db.VarChar(100)
   slug          String   @unique @db.VarChar(100)
@@ -231,7 +231,7 @@ model BlogCategory {
 }
 
 model BlogPost {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Char(36)
   slug        String    @unique @db.VarChar(255)
   title       String    @db.VarChar(255)
   titleEn     String?   @map("title_en") @db.VarChar(255)
@@ -239,8 +239,8 @@ model BlogPost {
   excerptEn   String?   @map("excerpt_en") @db.Text
   content     String?   @db.Text
   contentEn   String?   @map("content_en") @db.Text
-  categoryId  String?   @map("category_id") @db.Uuid
-  authorId    String?   @map("author_id") @db.Uuid
+  categoryId  String?   @map("category_id") @db.Char(36)
+  authorId    String?   @map("author_id") @db.Char(36)
   imageUrl    String?   @map("image_url") @db.VarChar(500)
   gallery     Json?
   tags        Json?
@@ -265,7 +265,7 @@ model BlogPost {
 // ─────────────────────────────── Services ───────────────────────────────
 
 model Service {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String   @id @default(uuid()) @db.Char(36)
   title         String   @db.VarChar(255)
   titleEn       String?  @map("title_en") @db.VarChar(255)
   description   String?  @db.Text
@@ -284,10 +284,10 @@ model Service {
 // ─────────────────────────────── Réservations ───────────────────────────────
 
 model Booking {
-  id               String        @id @default(uuid()) @db.Uuid
+  id               String        @id @default(uuid()) @db.Char(36)
   bookingReference String        @unique @map("booking_reference") @db.VarChar(20)
   type             BookingType   @default(circuit)
-  circuitId        String?       @map("circuit_id") @db.Uuid
+  circuitId        String?       @map("circuit_id") @db.Char(36)
   customerName     String        @map("customer_name") @db.VarChar(255)
   customerEmail    String        @map("customer_email") @db.VarChar(255)
   customerPhone    String?       @map("customer_phone") @db.VarChar(50)
@@ -311,7 +311,7 @@ model Booking {
 // ─────────────────────────────── Contact ───────────────────────────────
 
 model ContactRequest {
-  id          String               @id @default(uuid()) @db.Uuid
+  id          String               @id @default(uuid()) @db.Char(36)
   name        String               @db.VarChar(255)
   email       String               @db.VarChar(255)
   phone       String?              @db.VarChar(50)
@@ -332,7 +332,7 @@ model ContactRequest {
 // ─────────────────────────────── Paramètres ───────────────────────────────
 
 model Setting {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Char(36)
   key         String   @unique @db.VarChar(100)
   value       String?  @db.Text
   description String?  @db.Text
@@ -344,7 +344,7 @@ model Setting {
 // ─────────────────────────────── Médiathèque ───────────────────────────────
 
 model MediaFile {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Char(36)
   filename    String   @db.VarChar(255)
   storagePath String   @map("storage_path") @db.VarChar(500)
   url         String   @db.VarChar(500)
@@ -354,7 +354,7 @@ model MediaFile {
   height      Int?
   altText     String?  @map("alt_text") @db.VarChar(255)
   altTextEn   String?  @map("alt_text_en") @db.VarChar(255)
-  uploadedBy  String?  @map("uploaded_by") @db.Uuid
+  uploadedBy  String?  @map("uploaded_by") @db.Char(36)
   createdAt   DateTime @default(now()) @map("created_at")
 
   uploader User? @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)

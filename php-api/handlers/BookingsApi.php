@@ -49,7 +49,7 @@ final class BookingsApi
             $params[] = $status;
         }
         if ($q !== null) {
-            $where[] = '(t.customer_name ILIKE ? OR t.customer_email ILIKE ? OR t.booking_reference ILIKE ?)';
+            $where[] = '(t.customer_name LIKE ? OR t.customer_email LIKE ? OR t.booking_reference LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
@@ -91,10 +91,8 @@ final class BookingsApi
             Http::notFound('Réservation introuvable');
         }
 
-        $updated = Db::one(
-            'UPDATE bookings SET status = ?, updated_at = ? WHERE id = ? RETURNING *',
-            [$status, Support::now(), $id]
-        );
+        Db::run('UPDATE bookings SET status = ?, updated_at = ? WHERE id = ?', [$status, Support::now(), $id]);
+        $updated = Db::one('SELECT * FROM bookings WHERE id = ?', [$id]);
         if ($updated === null) {
             Http::notFound(); // P2025 : disparue entre la lecture et l'écriture
         }

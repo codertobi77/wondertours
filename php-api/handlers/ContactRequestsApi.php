@@ -53,7 +53,7 @@ final class ContactRequestsApi
             $params[] = $requestType;
         }
         if ($q !== null) {
-            $where[] = '(t.name ILIKE ? OR t.email ILIKE ? OR t.subject ILIKE ?)';
+            $where[] = '(t.name LIKE ? OR t.email LIKE ? OR t.subject LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
@@ -93,10 +93,8 @@ final class ContactRequestsApi
             Http::notFound('Demande introuvable');
         }
 
-        $updated = Db::one(
-            'UPDATE contact_requests SET status = ?, updated_at = ? WHERE id = ? RETURNING *',
-            [$status, Support::now(), $id]
-        );
+        Db::run('UPDATE contact_requests SET status = ?, updated_at = ? WHERE id = ?', [$status, Support::now(), $id]);
+        $updated = Db::one('SELECT * FROM contact_requests WHERE id = ?', [$id]);
         if ($updated === null) {
             Http::notFound(); // P2025 : disparue entre la lecture et l'écriture
         }

@@ -15,12 +15,12 @@ import {
   type MediaFile,
   type PasswordResetToken,
 } from "@/lib/generated/prisma/client";
-import { createPgAdapter } from "@/lib/pg-adapter";
+import { createMariadbAdapter } from "@/lib/mariadb-adapter";
 
 // Prisma 7 exige un driver adapter pg. La construction (TLS Aiven, retrait
 // des paramètres Prisma 6 ignorés par node-pg, plafond DATABASE_POOL_MAX)
-// est partagée avec le seed — cf. lib/pg-adapter.ts.
-const adapter = createPgAdapter();
+// est partagée avec le seed — cf. lib/mariadb-adapter.ts.
+const adapter = createMariadbAdapter();
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

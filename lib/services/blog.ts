@@ -33,8 +33,8 @@ export async function listBlogPosts(
     ...(filters.categorySlug && { category: { slug: filters.categorySlug } }),
     ...(filters.q && {
       OR: [
-        { title: { contains: filters.q, mode: "insensitive" } },
-        { excerpt: { contains: filters.q, mode: "insensitive" } },
+        { title: { contains: filters.q } },
+        { excerpt: { contains: filters.q } },
       ],
     }),
   };
@@ -122,7 +122,7 @@ export async function listBlogCategories(
   const where: Prisma.BlogCategoryWhereInput = {
     ...(filters.active !== undefined && { isActive: filters.active }),
     ...(filters.q && {
-      name: { contains: filters.q, mode: "insensitive" },
+      name: { contains: filters.q },
     }),
   };
 

@@ -68,7 +68,7 @@ final class PublicApi
         $where = ['t.is_active = true'];
         $params = [];
         if ($q !== null) {
-            $where[] = '(t.title ILIKE ? OR t.description ILIKE ?)';
+            $where[] = '(t.title LIKE ? OR t.description LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
         }
@@ -157,7 +157,7 @@ final class PublicApi
         $where = ['t.is_active = true'];
         $params = [];
         if ($q !== null) {
-            $where[] = '(t.name ILIKE ? OR t.country ILIKE ?)';
+            $where[] = '(t.name LIKE ? OR t.country LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
         }
@@ -185,7 +185,7 @@ final class PublicApi
         $where = ['t.is_active = true'];
         $params = [];
         if ($q !== null) {
-            $where[] = 't.name ILIKE ?';
+            $where[] = 't.name LIKE ?';
             $params[] = '%' . $q . '%';
         }
 
@@ -212,7 +212,7 @@ final class PublicApi
         $where = ['t.is_active = true'];
         $params = [];
         if ($q !== null) {
-            $where[] = '(t.title ILIKE ? OR t.description ILIKE ?)';
+            $where[] = '(t.title LIKE ? OR t.description LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
         }
@@ -244,7 +244,7 @@ final class PublicApi
             $where[] = $featured ? 't.is_featured = true' : 't.is_featured = false';
         }
         if ($q !== null) {
-            $where[] = '(t.name ILIKE ? OR t.text ILIKE ?)';
+            $where[] = '(t.name LIKE ? OR t.text LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
         }
@@ -379,7 +379,7 @@ final class PublicApi
         $where = ['t.is_published = true'];
         $params = [];
         if ($q !== null) {
-            $where[] = '(t.title ILIKE ? OR t.excerpt ILIKE ?)';
+            $where[] = '(t.title LIKE ? OR t.excerpt LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
         }
@@ -617,14 +617,16 @@ final class PublicApi
             $totalPrice = (float) $circuit['price'] * ($data['participants'] ?? 1);
         }
 
-        $row = Db::one(
+        $bookingId = Db::uuid();
+        $bookingRef = self::generateBookingReference();
+        Db::run(
             'INSERT INTO bookings'
             . ' (id, booking_reference, type, circuit_id, customer_name, customer_email, customer_phone,'
             . ' travel_date, return_date, participants, total_price, currency, notes, status, created_at, updated_at)'
-            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
-                Db::uuid(),
-                self::generateBookingReference(),
+                $bookingId,
+                $bookingRef,
                 $data['type'],
                 $data['circuitId'] ?? null,
                 $data['name'],
@@ -641,6 +643,7 @@ final class PublicApi
                 self::now(),
             ]
         );
+        $row = Db::one('SELECT * FROM bookings WHERE id = ?', [$bookingId]);
         $booking = Serial::booking($row);
 
         // Emails best effort, comme la route Next d'origine : confirmation

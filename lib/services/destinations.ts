@@ -18,8 +18,8 @@ export async function listDestinations(
     ...(filters.active !== undefined && { isActive: filters.active }),
     ...(filters.q && {
       OR: [
-        { name: { contains: filters.q, mode: "insensitive" } },
-        { country: { contains: filters.q, mode: "insensitive" } },
+        { name: { contains: filters.q } },
+        { country: { contains: filters.q } },
       ],
     }),
   };

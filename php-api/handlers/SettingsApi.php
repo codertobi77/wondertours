@@ -67,8 +67,9 @@ final class SettingsApi
     private static function upsert(array $entry): array
     {
         $hasDescription = $entry['hasDescription'];
-        $columns = ['id', '"key"', 'value'];
-        $params = [Db::uuid(), $entry['key'], $entry['value']];
+        $id = Db::uuid();
+        $columns = ['id', '`key`', 'value'];
+        $params = [$id, $entry['key'], $entry['value']];
         if ($hasDescription) {
             $columns[] = 'description';
             $params[] = $entry['description'];
@@ -76,16 +77,19 @@ final class SettingsApi
         $columns[] = 'updated_at';
         $params[] = Support::now();
 
-        $row = Db::one(
+        $updateParts = ['value = VALUES(value)'];
+        if ($hasDescription) {
+            $updateParts[] = 'description = VALUES(description)';
+        }
+        $updateParts[] = 'updated_at = VALUES(updated_at)';
+
+        Db::run(
             'INSERT INTO settings (' . implode(', ', $columns) . ')'
             . ' VALUES (' . implode(', ', array_fill(0, count($params), '?')) . ')'
-            . ' ON CONFLICT ("key") DO UPDATE SET'
-            . ' value = EXCLUDED.value'
-            . ($hasDescription ? ', description = EXCLUDED.description' : '')
-            . ', updated_at = EXCLUDED.updated_at'
-            . ' RETURNING *',
+            . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updateParts),
             $params
         );
+        $row = Db::one('SELECT * FROM settings WHERE `key` = ?', [$entry['key']]);
         return Serial::setting($row ?? []);
     }
 }

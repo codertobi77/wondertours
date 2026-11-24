@@ -58,7 +58,7 @@ final class UsersApi
             $where[] = $active ? 't.is_active = true' : 't.is_active = false';
         }
         if ($q !== null) {
-            $where[] = '(t.email ILIKE ? OR t.first_name ILIKE ? OR t.last_name ILIKE ?)';
+            $where[] = '(t.email LIKE ? OR t.first_name LIKE ? OR t.last_name LIKE ?)';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
             $params[] = '%' . $q . '%';
@@ -99,21 +99,23 @@ final class UsersApi
         $data = $v->d();
         $data['email'] = mb_strtolower((string) $data['email']);
 
-        $row = Db::one(
+        $userId = Db::uuid();
+        Db::run(
             'INSERT INTO users (id, email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)'
-            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
-                Db::uuid(),
+                $userId,
                 $data['email'],
                 Password::hash($data['password']),
                 $data['firstName'],
                 $data['lastName'],
                 $data['role'],
-                $data['isActive'] ? 'true' : 'false',
+                $data['isActive'] ? 1 : 0,
                 Support::now(),
                 Support::now(),
             ]
         );
+        $row = Db::one('SELECT * FROM users WHERE id = ?', [$userId]);
         $user = Serial::publicUser($row);
 
         // Email de bienvenue best effort — jamais le mot de passe en clair.
@@ -181,16 +183,14 @@ final class UsersApi
         }
         if (array_key_exists('isActive', $data)) {
             $set[] = 'is_active = ?';
-            $params[] = $data['isActive'] ? 'true' : 'false';
+            $params[] = $data['isActive'] ? 1 : 0;
         }
         $set[] = 'updated_at = ?'; // @updatedAt : toujours écrit par Prisma
         $params[] = Support::now();
         $params[] = $id;
 
-        $row = Db::one(
-            'UPDATE users SET ' . implode(', ', $set) . ' WHERE id = ? RETURNING *',
-            $params
-        );
+        Db::run('UPDATE users SET ' . implode(', ', $set) . ' WHERE id = ?', $params);
+        $row = Db::one('SELECT * FROM users WHERE id = ?', [$id]);
         if ($row === null) {
             Http::notFound(); // P2025 → 404 « Ressource introuvable »
         }
@@ -205,7 +205,10 @@ final class UsersApi
         if (!Support::isUuid($id)) {
             Http::notFound('Utilisateur introuvable');
         }
-        $deleted = Db::one('DELETE FROM users WHERE id = ? RETURNING id', [$id]);
+        $deleted = Db::one('SELECT id FROM users WHERE id = ?', [$id]);
+        if ($deleted !== null) {
+            Db::run('DELETE FROM users WHERE id = ?', [$id]);
+        }
         if ($deleted === null) {
             Http::notFound(); // P2025
         }

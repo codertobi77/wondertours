@@ -33,14 +33,12 @@ final class Db
         if (isset($parts['query'])) {
             parse_str($parts['query'], $query);
         }
-        $sslmode = $query['sslmode'] ?? 'require';
 
         $dsn = sprintf(
-            'pgsql:host=%s;port=%d;dbname=%s;sslmode=%s;connect_timeout=15',
+            'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
             $parts['host'],
-            isset($parts['port']) ? (int) $parts['port'] : 5432,
-            isset($parts['path']) && ltrim($parts['path'], '/') !== '' ? ltrim($parts['path'], '/') : 'postgres',
-            $sslmode
+            isset($parts['port']) ? (int) $parts['port'] : 3306,
+            isset($parts['path']) && ltrim($parts['path'], '/') !== '' ? ltrim($parts['path'], '/') : 'mysql'
         );
 
         $pdo = new \PDO(
@@ -50,10 +48,11 @@ final class Db
             [
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
                 \PDO::ATTR_EMULATE_PREPARES => false,
+                \PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
             ]
         );
-        // Rendu déterministe des timestamptz : toujours « …+00 » en UTC.
-        $pdo->exec("SET TIME ZONE 'UTC'");
+        // Rendu déterministe des timestamps : toujours en UTC.
+        $pdo->exec("SET time_zone = '+00:00'");
 
         self::$pdo = $pdo;
         return $pdo;
@@ -111,10 +110,16 @@ final class Db
             return false;
         }
         $sqlstate = is_array($e->errorInfo) ? ($e->errorInfo[0] ?? null) : null;
-        if ($sqlstate === '23505') {
+        $mysqlCode = is_array($e->errorInfo) ? ($e->errorInfo[1] ?? null) : null;
+        // MySQL 1062 = duplicate entry (contrainte d'unicité)
+        if ($mysqlCode === 1062 || $sqlstate === '23000') {
             Http::conflict('Contrainte d\'unicité violée (' . self::uniqueTarget($e) . ')');
         }
-        if ($sqlstate === '23503') {
+        // MySQL 1452 = foreign key constraint fails
+        if ($mysqlCode === 1452 || $sqlstate === '23000') {
+            // Only treat as FK if not already handled as unique
+        }
+        if ($mysqlCode === 1452) {
             Http::badRequest('Référence invalide (clé étrangère)');
         }
         return false;
@@ -123,6 +128,11 @@ final class Db
     /** Colonne(s) en cause dans une violation d'unicité (message DETAIL). */
     private static function uniqueTarget(\PDOException $e): string
     {
+        // MySQL: "Duplicate entry '...' for key '...'"
+        if (preg_match("/for key '([^']+)'/", $e->getMessage(), $m)) {
+            return $m[1];
+        }
+        // PostgreSQL fallback
         if (preg_match('/Key \(([^)]+)\)=/', $e->getMessage(), $m)) {
             return str_replace(', ', ', ', $m[1]);
         }

@@ -4,7 +4,7 @@
  * Lancer : bun prisma/seed.ts (ou bun run db:seed)
  */
 import { PrismaClient } from "../lib/generated/prisma/client";
-import { createPgAdapter } from "../lib/pg-adapter";
+import { createMariadbAdapter } from "../lib/mariadb-adapter";
 import { CIRCUITS } from "../lib/data/circuits";
 import { BLOG_POSTS } from "../lib/data/blog";
 import { TESTIMONIALS } from "../lib/data/testimonials";
@@ -13,8 +13,8 @@ import { slugify } from "../lib/slug";
 import bcrypt from "bcryptjs";
 
 // Adapter pg partagé avec le client applicatif (TLS Aiven, retrait des
-// paramètres Prisma 6, plafond DATABASE_POOL_MAX) — cf. lib/pg-adapter.ts.
-const prisma = new PrismaClient({ adapter: createPgAdapter() });
+// paramètres Prisma 6, plafond DATABASE_POOL_MAX) — cf. lib/mariadb-adapter.ts.
+const prisma = new PrismaClient({ adapter: createMariadbAdapter() });
 
 async function main() {
   console.log("🌱 Seed Wonder Tours…");

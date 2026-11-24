@@ -13,7 +13,7 @@ namespace WT;
  * Spécification par ressource (cf. DashboardApi::registerRoutes) :
  *   table, map (Model::*), serializer [Serial::class, '…'],
  *   label ("Circuit" → « Circuit introuvable »), deletedMessage,
- *   search (colonnes ILIKE de q), orderBy (fragment SQL),
+ *   search (colonnes LIKE de q), orderBy (fragment SQL),
  *   roles (écriture — défaut admin+editor),
  *   slugTable/slugSource (Slug::uniqueSlug ; null si sans slug),
  *   joins/relationColumns (relations sérialisées sur liste et GET /[id]),
@@ -114,10 +114,11 @@ final class Crud
         $inserted = Db::transaction(static function () use ($spec, $row, $data): ?array {
             $columns = implode(', ', array_keys($row));
             $placeholders = implode(', ', array_fill(0, count($row), '?'));
-            $inserted = Db::one(
-                'INSERT INTO ' . $spec['table'] . ' (' . $columns . ') VALUES (' . $placeholders . ') RETURNING *',
+            Db::run(
+                'INSERT INTO ' . $spec['table'] . ' (' . $columns . ') VALUES (' . $placeholders . ')',
                 array_values($row)
             );
+            $inserted = Db::one('SELECT * FROM ' . $spec['table'] . ' WHERE id = ?', [$row['id']]);
             // Écritures de relation (categoryIds m-n) dans la même transaction.
             if ($spec['afterCreate'] !== null) {
                 ($spec['afterCreate'])($row['id'], $data);
@@ -181,10 +182,11 @@ final class Crud
 
         $updated = Db::transaction(static function () use ($spec, $row, $id, $data): ?array {
             $set = implode(', ', array_map(static fn (string $column): string => "$column = ?", array_keys($row)));
-            $updated = Db::one(
-                'UPDATE ' . $spec['table'] . ' SET ' . $set . ' WHERE id = ? RETURNING *',
+            Db::run(
+                'UPDATE ' . $spec['table'] . ' SET ' . $set . ' WHERE id = ?',
                 [...array_values($row), $id]
             );
+            $updated = Db::one('SELECT * FROM ' . $spec['table'] . ' WHERE id = ?', [$id]);
             // Écritures de relation (categoryIds m-n) dans la même transaction,
             // seulement si la ligne existe (sinon Prisma lève P2025).
             if ($updated !== null && $spec['afterUpdate'] !== null) {
@@ -216,7 +218,10 @@ final class Crud
             }
             Db::run('DELETE FROM ' . $spec['table'] . ' WHERE id = ?', [$id]);
         } else {
-            $deleted = Db::one('DELETE FROM ' . $spec['table'] . ' WHERE id = ? RETURNING id', [$id]);
+            $deleted = Db::one('SELECT id FROM ' . $spec['table'] . ' WHERE id = ?', [$id]);
+            if ($deleted !== null) {
+                Db::run('DELETE FROM ' . $spec['table'] . ' WHERE id = ?', [$id]);
+            }
             if ($deleted === null) {
                 Http::notFound();
             }
@@ -248,7 +253,7 @@ final class Crud
         $conditions = [];
         $params = [];
         foreach ($spec['search'] as $column) {
-            $conditions[] = "t.$column ILIKE ?";
+            $conditions[] = "t.$column LIKE ?";
             $params[] = '%' . $q . '%';
         }
         return [' WHERE (' . implode(' OR ', $conditions) . ')', $params];
@@ -273,7 +278,7 @@ final class Crud
                     ? null
                     : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
             } elseif (is_bool($value)) {
-                $row[$column] = $value ? 'true' : 'false';
+                $row[$column] = $value ? 1 : 0;
             } else {
                 $row[$column] = $value;
             }

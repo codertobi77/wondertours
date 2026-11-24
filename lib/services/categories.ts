@@ -17,7 +17,7 @@ export async function listCategories(
   const where: Prisma.CategoryWhereInput = {
     ...(filters.active !== undefined && { isActive: filters.active }),
     ...(filters.q && {
-      name: { contains: filters.q, mode: "insensitive" },
+      name: { contains: filters.q },
     }),
   };
 

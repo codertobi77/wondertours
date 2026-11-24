@@ -183,10 +183,11 @@ final class AuthApi
         }
 
         // updateUser (P2025 → 404 par défaut) — le hash bcrypt est réécrit.
-        $user = Db::one(
-            'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ? RETURNING *',
+        Db::run(
+            'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?',
             [Password::hash($data['password']), Support::now(), $userId]
         );
+        $user = Db::one('SELECT * FROM users WHERE id = ?', [$userId]);
         if ($user === null) {
             Http::notFound();
         }
