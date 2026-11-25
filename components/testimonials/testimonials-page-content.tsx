@@ -51,7 +51,7 @@ export function TestimonialsPageContent({
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      fetch("/api/testimonials?pageSize=100")
+      fetch("/api/testimonials?pageSize=100", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
         .then((page) => {
           if (

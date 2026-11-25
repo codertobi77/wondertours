@@ -74,17 +74,6 @@ async function fetchApi<T>(path: string): Promise<T | null> {
   return null; // repli lib/data — la page continue
 }
 
-// ─────────────────────────────── Mémoïsation par requête ───────────────────────────────
-
-const memo = new Map<string, Promise<unknown>>();
-
-/** Déduplique les appels identiques pendant la requête (clé = chemin API). */
-function memoized<T>(path: string): Promise<T | null> {
-  if (!memo.has(path)) {
-    memo.set(path, fetchApi<T>(path));
-  }
-  return memo.get(path) as Promise<T | null>;
-}
 
 // ─────────────────────────────── Circuits ───────────────────────────────
 
@@ -102,7 +91,7 @@ export async function getCircuitSlugs(): Promise<string[]> {
 
 /** Circuit actif par slug (null → notFound / repli absent). */
 export async function getCircuit(slug: string): Promise<StaticCircuit | null> {
-  const circuit = await memoized<ApiCircuit>(`/api/circuits/${slug}`);
+  const circuit = await fetchApi<ApiCircuit>(`/api/circuits/${slug}`);
   return circuit ? toCircuitVM(circuit) : null;
 }
 
@@ -122,7 +111,7 @@ export async function getBlogSlugs(): Promise<string[]> {
 
 /** Article publié par slug (null → notFound / repli absent). */
 export async function getBlogPost(slug: string): Promise<StaticBlogPost | null> {
-  const post = await memoized<ApiBlogPost>(`/api/blog/${slug}`);
+  const post = await fetchApi<ApiBlogPost>(`/api/blog/${slug}`);
   return post ? toBlogPostVM(post) : null;
 }
 
@@ -145,7 +134,7 @@ function listPath(path: string): string {
 }
 
 async function fetchPage<T>(path: string): Promise<T[]> {
-  const page = await memoized<ApiPage<T>>(listPath(path));
+  const page = await fetchApi<ApiPage<T>>(listPath(path));
   return page?.items ?? [];
 }
 

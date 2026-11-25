@@ -15,3 +15,10 @@ RewriteRule ^(config\.(local|example)\.php|router-dev\.php|test-connexion\.php)$
 # Front controller : toute requête qui n'est pas un fichier existant.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [L]
+
+# Pas de cache navigateur pour les réponses API.
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</IfModule>

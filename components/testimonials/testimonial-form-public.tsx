@@ -46,7 +46,7 @@ export function TestimonialFormPublic() {
   // Liste des circuits pour « Circuit concerné » — best effort au montage.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/circuits?pageSize=100")
+    fetch("/api/circuits?pageSize=100", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((page) => {
         if (

@@ -29,7 +29,7 @@ export function AboutContent({ founderBioFr, founderBioEn }: AboutContentProps) 
   const [bioEn, setBioEn] = useState<string | null>(founderBioEn ?? null);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/settings")
+    fetch("/api/settings", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((page: { items?: { key: string; value: string | null }[] } | null) => {
         if (cancelled || !page?.items) return;

@@ -95,7 +95,7 @@ export default function ContactPage() {
 
   // Récupérer le token CSRF au montage
   useEffect(() => {
-    fetch("/api/csrf-token")
+    fetch("/api/csrf-token", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => data.token && setCsrfToken(data.token))
       .catch(() => {});

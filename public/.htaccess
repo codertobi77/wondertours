@@ -31,3 +31,10 @@ RewriteRule ^(.*)$ $1.html [L]
 # ── Erreurs ────────────────────────────────────────────────────────────────
 # 404.html est généré par l'export Next (page not-found).
 ErrorDocument 404 /404.html
+
+# ── Pas de cache navigateur (revalidation) ─────────────────────────────
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</IfModule>

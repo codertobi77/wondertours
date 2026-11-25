@@ -22,7 +22,7 @@ export function ViewCounter({ slug }: { slug: string }) {
       return;
     }
 
-    fetch(`/api/blog/${encodeURIComponent(slug)}`)
+    fetch(`/api/blog/${encodeURIComponent(slug)}`, { cache: "no-store" })
       .then(() => {
         // Marquer comme compté pour cette session
         if (typeof window !== "undefined") {

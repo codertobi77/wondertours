@@ -46,7 +46,7 @@ export function Footer() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/settings")
+    fetch("/api/settings", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((result) => {
         if (cancelled || !result) return;
