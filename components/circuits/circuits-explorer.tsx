@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CircuitCard } from "@/components/circuits/circuit-card";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/language-context";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Circuit } from "@/lib/data/circuits";
+import { toCircuitVM } from "@/lib/view-models";
+import type { ApiCircuit, ApiCategory, ApiDestination } from "@/lib/api-types";
 
 interface Option {
   name: string;
@@ -33,15 +35,55 @@ interface CircuitsExplorerProps {
  * fournie par la page.
  */
 export function CircuitsExplorer({
-  circuits,
-  categories,
-  destinations,
+  circuits: initialCircuits,
+  categories: initialCategories,
+  destinations: initialDestinations,
   pageSize = 6,
 }: CircuitsExplorerProps) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const [circuits, setCircuits] = useState<Circuit[]>(initialCircuits);
+  const [categories, setCategories] = useState<Option[]>(initialCategories);
+  const [destinations, setDestinations] = useState<Option[]>(initialDestinations);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cRes, catRes, destRes] = await Promise.all([
+          fetch("/api/circuits?pageSize=100", { cache: "no-store" }),
+          fetch("/api/categories?pageSize=100", { cache: "no-store" }),
+          fetch("/api/destinations?pageSize=100", { cache: "no-store" }),
+        ]);
+        if (cancelled) return;
+        if (cRes.ok) {
+          const data = await cRes.json();
+          const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+          setCircuits(items.map((c: ApiCircuit) => toCircuitVM(c)));
+        }
+        if (catRes.ok) {
+          const data = await catRes.json();
+          const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+          setCategories(items.map((c: ApiCategory) => ({ name: c.name, slug: c.slug })));
+        }
+        if (destRes.ok) {
+          const data = await destRes.json();
+          const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+          setDestinations(items.map((d: ApiDestination) => ({ name: d.name, slug: d.slug })));
+        }
+      } catch {
+        // repli sur les données embarquées au build
+      }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // État initial depuis l'URL : ?category=<slug> et ?page=N.
   const initialCategorySlug = searchParams.get("category") ?? "";
@@ -217,7 +259,9 @@ export function CircuitsExplorer({
             </p>
           </div>
 
-          {filteredCircuits.length > 0 ? (
+          {loading ? (
+            <p className="text-center text-text-secondary py-12">{isFr ? "Chargement..." : "Loading..."}</p>
+          ) : filteredCircuits.length > 0 ? (
             <>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {pagedCircuits.map((circuit) => (
