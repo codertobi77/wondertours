@@ -7,6 +7,7 @@ export interface Circuit {
   categories: string[];
   duration: string;
   price: number;
+  currency: string;
   image: string;
   description: string;
   highlights: string[];

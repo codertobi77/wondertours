@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, MapPin, Check, X } from "lucide-react";
 import { Circuit } from "@/lib/data/circuits";
 import { useLanguage } from "@/contexts/language-context";
+import { useCurrency } from "@/contexts/currency-context";
+import { convertPrice, formatPrice } from "@/lib/format";
 import { FALLBACK_IMAGE } from "@/lib/view-models";
 
 interface CircuitDetailContentProps {
@@ -15,6 +17,29 @@ interface CircuitDetailContentProps {
 export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
+  const { currency: selectedCurrency } = useCurrency();
+
+  const title = isFr ? circuit.title : circuit.titleEn || circuit.title;
+  const categories = isFr
+    ? circuit.categories
+    : circuit.categoriesEn || circuit.categories;
+  const destination = isFr
+    ? circuit.destination
+    : circuit.destinationEn || circuit.destination;
+  const duration = isFr
+    ? circuit.duration
+    : circuit.durationEn || circuit.duration;
+  const description = isFr
+    ? circuit.description
+    : circuit.descriptionEn || circuit.description;
+  const highlights =
+    !isFr && circuit.highlightsEn?.length ? circuit.highlightsEn : circuit.highlights;
+  const itinerary =
+    !isFr && circuit.itineraryEn?.length ? circuit.itineraryEn : circuit.itinerary;
+  const included =
+    !isFr && circuit.includedEn?.length ? circuit.includedEn : circuit.included;
+  const excluded =
+    !isFr && circuit.excludedEn?.length ? circuit.excludedEn : circuit.excluded;
 
   const faqs = isFr
     ? [
@@ -60,28 +85,28 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
       <section className="relative h-[60vh] min-h-[400px]">
         <img
           src={circuit.image}
-          alt={circuit.title}
+          alt={title}
           className="h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 container mx-auto px-4 lg:px-8 pb-12">
           <div className="flex flex-wrap gap-3 mb-4">
-            {circuit.categories.map((category) => (
+            {categories.map((category) => (
               <Badge key={category} variant="default">{category}</Badge>
             ))}
-            <Badge variant="secondary">{circuit.destination}</Badge>
+            <Badge variant="secondary">{destination}</Badge>
           </div>
           <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
-            {circuit.title}
+            {title}
           </h1>
           <div className="flex flex-wrap gap-6 text-white">
             <div className="flex items-center">
               <Clock className="w-5 h-5 mr-2" />
-              {circuit.duration}
+              {duration}
             </div>
             <div className="flex items-center">
               <MapPin className="w-5 h-5 mr-2" />
-              {circuit.destination}
+              {destination}
             </div>
           </div>
         </div>
@@ -92,7 +117,7 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-white">
-              <span className="text-3xl font-bold">{circuit.price.toLocaleString()} FCFA</span>
+              <span className="text-3xl font-bold">{formatPrice(convertPrice(circuit.price, circuit.currency, selectedCurrency), selectedCurrency)}</span>
               <span className="text-gray-200"> {isFr ? "/personne" : "/person"}</span>
             </div>
             <Button variant="secondary" size="lg" href="/contact">
@@ -111,21 +136,21 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
               align="left"
             />
             <p className="text-text-secondary text-lg leading-relaxed">
-              {circuit.description}
+              {description}
             </p>
           </div>
         </div>
       </section>
 
       {/* Highlights */}
-      {circuit.highlights.length > 0 && (
+      {highlights.length > 0 && (
         <section className="py-20 bg-background">
           <div className="container mx-auto px-4 lg:px-8">
             <SectionHeading
               title={isFr ? "Points forts" : "Highlights"}
             />
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {circuit.highlights.map((highlight, index) => (
+              {highlights.map((highlight, index) => (
                 <div key={index} className="bg-white p-6 rounded-xl shadow-md">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
                     <Check className="w-5 h-5 text-primary" />
@@ -139,14 +164,14 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
       )}
 
       {/* Itinerary */}
-      {circuit.itinerary.length > 0 && (
+      {itinerary.length > 0 && (
         <section className="py-20 bg-white">
           <div className="container mx-auto px-4 lg:px-8">
             <SectionHeading
               title={isFr ? "Programme détaillé" : "Detailed itinerary"}
             />
             <div className="max-w-4xl mx-auto space-y-8">
-              {circuit.itinerary.map((day) => (
+              {itinerary.map((day) => (
                 <div key={day.day} className="relative pl-8 pb-8 border-l-2 border-primary/30 last:pb-0">
                   <div className="absolute left-0 top-0 w-4 h-4 bg-primary rounded-full -translate-x-[9px]"></div>
                   <div className="bg-background p-6 rounded-xl">
@@ -175,7 +200,7 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
                 align="left"
               />
               <ul className="space-y-3">
-                {circuit.included.map((item, index) => (
+                {included.map((item, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                     <span className="text-text-secondary">{item}</span>
@@ -189,7 +214,7 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
                 align="left"
               />
               <ul className="space-y-3">
-                {circuit.excluded.map((item, index) => (
+                {excluded.map((item, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <X className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
                     <span className="text-text-secondary">{item}</span>
@@ -212,7 +237,7 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
               <div key={index} className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
                 <img
                   src={image}
-                  alt={`${circuit.title} gallery photo ${index + 1}`}
+                  alt={`${title} gallery photo ${index + 1}`}
                   className="h-full w-full object-cover hover:scale-105 transition-transform duration-300"
                 />
               </div>

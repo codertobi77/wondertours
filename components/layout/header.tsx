@@ -9,11 +9,14 @@ import { NAVIGATION } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/language-context";
+import { useCurrency } from "@/contexts/currency-context";
+import { SUPPORTED_CURRENCIES } from "@/lib/format";
 import { ReservationsSidebar } from "@/components/common/reservations-sidebar";
 import { useReservations } from "@/contexts/reservations-context";
 
 export function Header() {
-  const { locale, setLocale, t } = useLanguage();
+  const { locale, setLocale } = useLanguage();
+  const { currency: selectedCurrency, setCurrency } = useCurrency();
   const { reservations } = useReservations();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -133,6 +136,16 @@ export function Header() {
             >
               EN
             </button>
+            <select
+              value={selectedCurrency}
+              onChange={(e) => setCurrency(e.target.value as typeof selectedCurrency)}
+              className="ml-2 bg-transparent text-white text-sm font-medium border border-white/30 rounded px-2 py-1"
+              aria-label="Currency"
+            >
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <option key={c} value={c} className="text-black">{c}</option>
+              ))}
+            </select>
           </div>
 
           {/* Mobile Actions */}

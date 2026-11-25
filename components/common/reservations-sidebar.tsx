@@ -4,6 +4,8 @@ import { X, Trash2, Calendar, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReservations, ReservationItem } from "@/contexts/reservations-context";
 import { useLanguage } from "@/contexts/language-context";
+import { useCurrency } from "@/contexts/currency-context";
+import { convertPrice, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 
@@ -16,8 +18,9 @@ export function ReservationsSidebar({ isOpen, onClose }: ReservationsSidebarProp
   const { reservations, removeReservation, clearReservations } = useReservations();
   const { locale } = useLanguage();
   const isFr = locale === "fr";
+  const { currency: selectedCurrency } = useCurrency();
 
-  const totalPrice = reservations.reduce((sum, item) => sum + item.price, 0);
+  const totalPrice = reservations.reduce((sum, item) => sum + convertPrice(item.price, item.currency ?? "XOF", selectedCurrency), 0);
 
   // Empêcher le défilement du body quand la sidebar est ouverte
   useEffect(() => {
@@ -108,7 +111,7 @@ export function ReservationsSidebar({ isOpen, onClose }: ReservationsSidebarProp
               <div className="flex items-center justify-between mb-4">
                 <span className="font-medium text-text">Total</span>
                 <span className="text-2xl font-bold text-primary">
-                  {totalPrice.toLocaleString()} FCFA
+                  {formatPrice(totalPrice, selectedCurrency)}
                 </span>
               </div>
               <Button variant="primary" className="w-full mb-3" href="/contact">
@@ -132,6 +135,7 @@ export function ReservationsSidebar({ isOpen, onClose }: ReservationsSidebarProp
 function ReservationCard({ item, onRemove }: { item: ReservationItem; onRemove: () => void }) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
+  const { currency: selectedCurrency } = useCurrency();
 
   return (
     <div className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -151,7 +155,7 @@ function ReservationCard({ item, onRemove }: { item: ReservationItem; onRemove: 
           </div>
           <div className="flex items-center justify-between">
             <span className="font-bold text-primary">
-              {item.price.toLocaleString()} FCFA
+              {formatPrice(convertPrice(item.price, item.currency ?? "XOF", selectedCurrency), selectedCurrency)}
             </span>
             <button
               onClick={onRemove}

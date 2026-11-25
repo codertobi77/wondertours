@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Clock, MapPin, Check, X } from "lucide-react";
 import { Circuit } from "@/lib/data/circuits";
 import { useLanguage } from "@/contexts/language-context";
+import { useCurrency } from "@/contexts/currency-context";
+import { convertPrice, formatPrice } from "@/lib/format";
 
 interface CircuitDetailModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ interface CircuitDetailModalProps {
 export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailModalProps) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
+  const { currency: selectedCurrency } = useCurrency();
 
   // Champs FR avec repli automatique sur la traduction EN (ou
   // inversement) quand la colonne En n'est pas renseignée en base.
@@ -78,7 +81,7 @@ export function CircuitDetailModal({ isOpen, onClose, circuit }: CircuitDetailMo
         <div className="flex items-center justify-between mb-6 pb-6 border-b">
           <div>
             <span className="text-3xl font-bold text-primary">
-              {circuit.price.toLocaleString()} FCFA
+              {formatPrice(convertPrice(circuit.price, circuit.currency, selectedCurrency), selectedCurrency)}
             </span>
             <span className="text-text-secondary text-sm"> {isFr ? "/personne" : "/person"}</span>
           </div>

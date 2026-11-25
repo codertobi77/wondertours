@@ -7,6 +7,7 @@ export interface ReservationItem {
   type: "circuit" | "sejour" | "hotel";
   title: string;
   price: number;
+  currency?: string;
   image: string;
   date: string;
   userId: string;

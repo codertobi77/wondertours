@@ -94,6 +94,7 @@ export function toCircuitVM(
     duration: formatDuration(circuit.durationDays),
     durationEn: formatDurationEn(circuit.durationDays),
     price: Number(circuit.price),
+    currency: circuit.currency ?? "XOF",
     image: circuit.imageUrl ?? FALLBACK_IMAGE,
     description: circuit.description ?? "",
     descriptionEn: circuit.descriptionEn ?? undefined,

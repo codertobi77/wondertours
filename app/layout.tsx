@@ -4,6 +4,7 @@ import "./globals.css";
 import { SITE_CONFIG } from "@/lib/constants";
 import { generateMetadata } from "@/lib/seo";
 import { LanguageProvider } from "@/contexts/language-context";
+import { CurrencyProvider } from "@/contexts/currency-context";
 import { ReservationsProvider } from "@/contexts/reservations-context";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
@@ -65,7 +66,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <ReservationsProvider>
           <LanguageProvider>
-            <ErrorBoundary>{children}</ErrorBoundary>
+            <CurrencyProvider>
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </CurrencyProvider>
           </LanguageProvider>
         </ReservationsProvider>
       </body>

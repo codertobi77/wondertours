@@ -475,6 +475,7 @@ final class PublicApi
             'social_facebook',
             'social_instagram',
             'social_youtube',
+            'whatsapp_number',
         ];
         $where = 't."key" IN (' . implode(', ', array_fill(0, count($whitelist), '?')) . ')';
 

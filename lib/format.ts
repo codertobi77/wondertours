@@ -87,3 +87,40 @@ export function splitTags(value: string): string[] {
     .map((tag) => tag.trim())
     .filter(Boolean);
 }
+
+/** Devises supportées pour l'affichage et la conversion des prix. */
+export const SUPPORTED_CURRENCIES = ["XOF", "EUR", "USD"] as const;
+export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number];
+
+/** Taux de change approximatifs par rapport au XOF (1 unité de devise = X XOF). */
+export const EXCHANGE_RATES_TO_XOF: Record<CurrencyCode, number> = {
+  XOF: 1,
+  EUR: 655.957,
+  USD: 605.0,
+};
+
+/** Convertit un montant d'une devise à une autre (via XOF). */
+export function convertPrice(
+  amount: number,
+  from: string,
+  to: string
+): number {
+  const fromRate = EXCHANGE_RATES_TO_XOF[(from?.toUpperCase() as CurrencyCode)] ?? 1;
+  const toRate = EXCHANGE_RATES_TO_XOF[(to?.toUpperCase() as CurrencyCode)] ?? 1;
+  if (!toRate) return amount;
+  return (amount * fromRate) / toRate;
+}
+
+/** Formatage prix selon la devise : XOF → « 150 000 FCFA », sinon « 99.99 USD ». */
+export function formatPrice(
+  amount: number | null | undefined,
+  currency: string | null | undefined
+): string {
+  const value = Number(amount ?? 0);
+  const cur = (currency ?? "XOF").toUpperCase();
+  const formatted = new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: cur === "XOF" ? 0 : 2,
+  }).format(value);
+  return cur === "XOF" ? `${formatted} FCFA` : `${formatted} ${cur}`;
+}
