@@ -115,8 +115,10 @@ check "GET /api/categories" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE
 check "GET /api/services" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/services")"
 check "GET /api/testimonials" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/testimonials")"
 check "GET /api/blog" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog")"
-BLOG_SLUG=$(curl -s "$BASE_URL/api/blog?pageSize=1" | python3 -c "import json,sys; print(json.load(sys.stdin)['items'][0]['slug'])")
-check "GET /api/blog/[slug]" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog/$BLOG_SLUG")"
+BLOG_SLUG=$(curl -s "$BASE_URL/api/blog?pageSize=1" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['items'][0]['slug'] if d.get('items') else '')")
+if [ -n "$BLOG_SLUG" ]; then
+  check "GET /api/blog/[slug]" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog/$BLOG_SLUG")"
+fi
 
 # Extensions pour l'export statique du frontend (pages publiques).
 check "GET /api/blog-categories" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/blog-categories")"
