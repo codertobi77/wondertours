@@ -69,7 +69,7 @@ export function Header() {
             <img
               src="/Logo_wonder_blanc.png"
               alt="Wonder Tours and Services"
-              className="h-15 w-auto"
+              className="h-12 md:h-15 w-auto object-contain max-w-full"
             />
           </Link>
 
