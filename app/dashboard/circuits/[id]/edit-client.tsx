@@ -68,6 +68,7 @@ export default function EditCircuitPage() {
         durationDays: circuit.durationDays,
         durationNights: circuit.durationNights,
         price: Number(circuit.price),
+        currency: circuit.currency,
         difficulty: circuit.difficulty,
         minParticipants: circuit.minParticipants,
         maxParticipants: circuit.maxParticipants,

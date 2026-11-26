@@ -39,6 +39,7 @@ export interface CircuitFormInitial {
   durationDays?: number | null;
   durationNights?: number | null;
   price?: number | string;
+  currency?: string | null;
   difficulty?: string | null;
   minParticipants?: number | null;
   maxParticipants?: number | null;
@@ -87,6 +88,7 @@ function toFormState(initial?: CircuitFormInitial) {
     destinationId: optionalString(initial?.destinationId),
     categoryIds: initial?.categoryIds ?? [],
     price: initial?.price != null ? String(initial.price) : "",
+    currency: initial?.currency ?? "XOF",
     difficulty: initial?.difficulty ?? "moderate",
     minParticipants: optionalNumberField(initial?.minParticipants),
     maxParticipants: optionalNumberField(initial?.maxParticipants),
@@ -224,6 +226,7 @@ export function CircuitForm({
             durationDays: optionalNumber(form.durationDays),
             durationNights: optionalNumber(form.durationNights),
             price: Number(form.price),
+            currency: form.currency,
             difficulty: form.difficulty,
             minParticipants: optionalNumber(form.minParticipants),
             maxParticipants: optionalNumber(form.maxParticipants),
@@ -445,11 +448,21 @@ export function CircuitForm({
                 onChange={(e) => update("destinationId", e.target.value)}
               />
               <Input
-                label="Prix (FCFA) *"
+                label="Prix *"
                 type="number"
                 placeholder="85000"
                 value={form.price}
                 onChange={(e) => update("price", e.target.value)}
+              />
+              <Select
+                label="Devise"
+                options={[
+                  { value: "XOF", label: "XOF (FCFA)" },
+                  { value: "EUR", label: "EUR" },
+                  { value: "USD", label: "USD" },
+                ]}
+                value={form.currency}
+                onChange={(e) => update("currency", e.target.value)}
               />
               <Select
                 label="Difficulté"
