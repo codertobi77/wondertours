@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useReservations, ReservationItem } from "@/contexts/reservations-context";
 import { useLanguage } from "@/contexts/language-context";
 import { useCurrency } from "@/contexts/currency-context";
-import { convertPrice, formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 
@@ -18,9 +18,9 @@ export function ReservationsSidebar({ isOpen, onClose }: ReservationsSidebarProp
   const { reservations, removeReservation, clearReservations } = useReservations();
   const { locale } = useLanguage();
   const isFr = locale === "fr";
-  const { currency: selectedCurrency } = useCurrency();
+  const { currency: selectedCurrency, convert } = useCurrency();
 
-  const totalPrice = reservations.reduce((sum, item) => sum + convertPrice(item.price, item.currency ?? "XOF", selectedCurrency), 0);
+  const totalPrice = reservations.reduce((sum, item) => sum + convert(item.price, item.currency ?? "XOF", selectedCurrency), 0);
 
   // Empêcher le défilement du body quand la sidebar est ouverte
   useEffect(() => {
@@ -135,7 +135,7 @@ export function ReservationsSidebar({ isOpen, onClose }: ReservationsSidebarProp
 function ReservationCard({ item, onRemove }: { item: ReservationItem; onRemove: () => void }) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
-  const { currency: selectedCurrency } = useCurrency();
+  const { currency: selectedCurrency, convert } = useCurrency();
 
   return (
     <div className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -155,7 +155,7 @@ function ReservationCard({ item, onRemove }: { item: ReservationItem; onRemove: 
           </div>
           <div className="flex items-center justify-between">
             <span className="font-bold text-primary">
-              {formatPrice(convertPrice(item.price, item.currency ?? "XOF", selectedCurrency), selectedCurrency)}
+              {formatPrice(convert(item.price, item.currency ?? "XOF", selectedCurrency), selectedCurrency)}
             </span>
             <button
               onClick={onRemove}

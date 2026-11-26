@@ -706,4 +706,33 @@ final class PublicApi
     {
         return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s.u');
     }
+    /** GET /api/exchange-rates — taux de change en temps réel (frankfurter.app). */
+    public static function exchangeRates(): never
+    {
+        $url = 'https://api.frankfurter.app/latest?from=XOF&to=EUR,USD';
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $raw = curl_exec($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        curl_close($curl);
+
+        $rates = ['XOF' => 1.0];
+        if (is_string($raw) && $status === 200) {
+            $data = json_decode($raw, true);
+            if (is_array($data) && isset($data['rates']) && is_array($data['rates'])) {
+                foreach (['EUR', 'USD'] as $cur) {
+                    if (isset($data['rates'][$cur]) && is_numeric($data['rates'][$cur]) && (float) $data['rates'][$cur] > 0) {
+                        $rates[$cur] = 1.0 / (float) $data['rates'][$cur];
+                    }
+                }
+            }
+        }
+        Http::ok(['base' => 'XOF', 'rates' => $rates]);
+    }
+
 }

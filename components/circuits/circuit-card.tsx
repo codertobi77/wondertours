@@ -9,7 +9,7 @@ import { Clock, MapPin } from "lucide-react";
 import { Circuit } from "@/lib/data/circuits";
 import { useLanguage } from "@/contexts/language-context";
 import { useCurrency } from "@/contexts/currency-context";
-import { convertPrice, formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import { CircuitDetailModal } from "./circuit-detail-modal";
 
 interface CircuitCardProps {
@@ -20,7 +20,7 @@ export function CircuitCard({ circuit }: CircuitCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { locale } = useLanguage();
   const isFr = locale === "fr";
-  const { currency: selectedCurrency } = useCurrency();
+  const { currency: selectedCurrency, convert } = useCurrency();
 
   // Champs FR avec repli automatique sur la traduction EN (ou
   // inversement) quand la colonne En n'est pas renseignée en base.
@@ -70,7 +70,7 @@ export function CircuitCard({ circuit }: CircuitCardProps) {
 
             <div className="flex items-center justify-between mb-4">
               <div className="text-2xl font-bold text-primary">
-                {formatPrice(convertPrice(circuit.price, circuit.currency, selectedCurrency), selectedCurrency)}
+                {formatPrice(convert(circuit.price, circuit.currency, selectedCurrency), selectedCurrency)}
               </div>
               <span className="text-text-secondary text-sm">
                 {isFr ? "/personne" : "/person"}

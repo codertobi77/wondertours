@@ -7,7 +7,7 @@ import { Clock, MapPin, Check, X } from "lucide-react";
 import { Circuit } from "@/lib/data/circuits";
 import { useLanguage } from "@/contexts/language-context";
 import { useCurrency } from "@/contexts/currency-context";
-import { convertPrice, formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import { FALLBACK_IMAGE } from "@/lib/view-models";
 
 interface CircuitDetailContentProps {
@@ -17,7 +17,7 @@ interface CircuitDetailContentProps {
 export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
   const { locale } = useLanguage();
   const isFr = locale === "fr";
-  const { currency: selectedCurrency } = useCurrency();
+  const { currency: selectedCurrency, convert } = useCurrency();
 
   const title = isFr ? circuit.title : circuit.titleEn || circuit.title;
   const categories = isFr
@@ -117,7 +117,7 @@ export function CircuitDetailContent({ circuit }: CircuitDetailContentProps) {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-white">
-              <span className="text-3xl font-bold">{formatPrice(convertPrice(circuit.price, circuit.currency, selectedCurrency), selectedCurrency)}</span>
+              <span className="text-3xl font-bold">{formatPrice(convert(circuit.price, circuit.currency, selectedCurrency), selectedCurrency)}</span>
               <span className="text-gray-200"> {isFr ? "/personne" : "/person"}</span>
             </div>
             <Button variant="secondary" size="lg" href="/contact">

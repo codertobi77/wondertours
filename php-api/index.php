@@ -59,6 +59,7 @@ date_default_timezone_set(Env::get('timezone') ?? 'UTC');
 Router::get('/api/blog/{slug}', [PublicApi::class, 'blogBySlug']);
 Router::get('/api/blog-categories', [PublicApi::class, 'blogCategories']);
 Router::get('/api/settings', [PublicApi::class, 'settings']);
+Router::get('/api/exchange-rates', [PublicApi::class, 'exchangeRates']);
 Router::post('/api/contact', [PublicApi::class, 'contact']);
 Router::post('/api/bookings', [PublicApi::class, 'bookings']);
 Router::post('/api/testimonials', [PublicApi::class, 'createTestimonial']);
