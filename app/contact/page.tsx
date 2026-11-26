@@ -115,7 +115,17 @@ export default function ContactPage() {
             map[item.key] = item.value;
           }
         }
-        if (map.whatsapp_number) setWhatsappHref(map.whatsapp_number);
+        if (map.whatsapp_number) {
+          const wa = map.whatsapp_number;
+          if (wa.startsWith("http")) setWhatsappHref(wa);
+          else {
+            const digits = wa.replace(/\D/g, "");
+            if (digits) setWhatsappHref(`https://wa.me/${digits}`);
+          }
+        } else if (map.contact_phone) {
+          const digits = map.contact_phone.replace(/\D/g, "");
+          if (digits) setWhatsappHref(`https://wa.me/${digits}`);
+        }
         if (map.contact_email) setContactEmail(map.contact_email);
         if (map.contact_phone) setContactPhone(map.contact_phone);
         if (map.contact_address) setContactAddress(map.contact_address);

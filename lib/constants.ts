@@ -5,7 +5,7 @@ export const SITE_CONFIG = {
   url: "https://wondertoursandservices.com",
   ogImage: "/og-image.jpg",
   links: {
-    whatsapp: "https://wa.me/22990000000",
+    whatsapp: "https://wa.me/2290196338277",
     facebook: "https://facebook.com/wondertours",
     instagram: "https://instagram.com/wondertours",
     youtube: "https://youtube.com/@wondertours",

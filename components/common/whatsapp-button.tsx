@@ -25,9 +25,21 @@ export function WhatsAppButton({ className }: WhatsAppButtonProps) {
             map[item.key] = item.value;
           }
         }
-        if (map.whatsapp_number) {
-          setHref(map.whatsapp_number);
+        const wa = map.whatsapp_number;
+        const phone = map.contact_phone;
+        let next: string | null = null;
+        if (wa) {
+          if (wa.startsWith("http")) next = wa;
+          else {
+            const digits = wa.replace(/\D/g, "");
+            if (digits) next = `https://wa.me/${digits}`;
+          }
         }
+        if (!next && phone) {
+          const digits = phone.replace(/\D/g, "");
+          if (digits) next = `https://wa.me/${digits}`;
+        }
+        if (next) setHref(next);
       })
       .catch(() => {
         // graceful degradation: keep static value
